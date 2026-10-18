@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>雲林縣立飛沙國民中學 115-1學期 課務、排代、調課與月結造冊整合管理系統</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==================== 全螢幕安全登入閘門 ==================== -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+      <div class="login-brand">🏫 雲林縣立飛沙國民中學</div>
+      <div class="login-sub">115-1 課務、排代與月結整合系統登入</div>
+
+      <div class="login-field">
+        <label for="loginUserSelect">選擇登入教職員：</label>
+        <select id="loginUserSelect" class="form-control" style="width:100%; font-weight:700;"></select>
+      </div>
+
+      <div class="login-field">
+        <label for="loginPasswordInput">請輸入個人登入密碼：</label>
+        <div style="position: relative; display: flex; align-items: center;">
+          <input type="password" id="loginPasswordInput" class="form-control" style="width:100%; padding-right: 2.5rem;" placeholder="請輸入密碼" onkeydown="if(event.key==='Enter') submitLogin()">
+          <button type="button" id="btnToggleLoginPwd" onclick="toggleLoginPasswordVisibility()" style="position: absolute; right: 8px; background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 2px;" title="目前為隱藏 (*號)，點擊顯示為明文">
+            🙈
+          </button>
+        </div>
+      </div>
+
+      <div id="loginErrorMsg" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:1rem; text-align:left;">
+        密碼錯誤，請重新輸入！
+      </div>
+
+      <button class="btn btn-primary" style="width:100%; justify-content:center; padding:0.6rem; font-size:1rem;" onclick="submitLogin()">
+        🔑 登入系統
+      </button>
+
+      <hr style="margin: 1.5rem 0; border: none; border-top: 1px dashed #cbd5e1;">
+
+      <div style="font-size:0.8rem; font-weight:700; color:#64748b; text-align:left; margin-bottom:0.4rem;">
+        📺 班級教室快速通道 (免輸入密碼直接查看班級課表)：
+      </div>
+      <div class="kiosk-grid">
+        <button class="btn btn-secondary btn-sm" onclick="quickClassLogin('701')">📺 701 教室端</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickClassLogin('801')">📺 801 教室端</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickClassLogin('901')">📺 901 教室端</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickClassLogin('902')">📺 902 教室端</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 頂部身分導覽 -->
+  <header class="app-header">
+    <div class="header-container">
+      <div>
+        <div class="brand-title">
+          <span>🏫 雲林縣立飛沙國民中學</span>
+          <span class="brand-badge">115-1 學期</span>
+        </div>
+        <div class="brand-sub">課務、排代、調課與月結造冊整合管理系統</div>
+      </div>
+
+      <div class="user-status-area">
+        <span id="currentUserRoleBadge" class="role-badge badge-admin">
+          🛡️ 最高管理權限
+        </span>
+        <span id="currentUserNameDisplay" style="font-weight:700; font-size:0.9rem;">
+          施銘權 [教務組長]
+        </span>
+        <button class="btn btn-secondary btn-sm" id="btnHeaderChangePwd" onclick="openChangePasswordModal()" style="font-size:0.75rem; padding:2px 6px;">
+          🔑 修改密碼
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="handleLogout()" style="font-size:0.75rem; padding:2px 6px;">
+          🚪 登出
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 功能模組切換導覽列 -->
+  <nav class="nav-tabs" id="appNavbar">
+    <div class="nav-container">
+      <button class="nav-btn active" id="navBtnSchedule" onclick="switchTab('tabSchedule')">
+        <span>📅</span> 模組 1：動態課表網格
+      </button>
+      <button class="nav-btn" id="navBtnTasks" onclick="switchTab('tabTasks')">
+        <span>📋</span> 模組 2：代課任務清單
+      </button>
+      <button class="nav-btn" id="navBtnWorkflow" onclick="switchTab('tabWorkflow')">
+        <span>🔄</span> 模組 3：同仁自辦調代課工作流
+      </button>
+      <button class="nav-btn" id="navBtnRadar" onclick="switchTab('tabRadar')">
+        <span>🎯</span> 模組 4：智慧排代作業台
+      </button>
+      <button class="nav-btn" id="navBtnReports" onclick="switchTab('tabReports')">
+        <span>📑</span> 模組 5：月結造冊中心
+      </button>
+      <button class="nav-btn" id="navBtnSettings" onclick="switchTab('tabSettings')">
+        <span>⚙️</span> 模組 6：學期初操作專區
+      </button>
+    </div>
+  </nav>
+
+  <!-- 主內容容器 -->
+  <main class="main-container">
+
+    <!-- 模組 1: 課表網格 -->
+    <section id="tabSchedule" class="tab-content active">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📅</span> <span id="scheduleViewTitle">動態課表網格檢視</span>
+            <span id="scheduleCountBadge" style="font-size:0.8rem; font-weight:normal; color:#64748b;"></span>
+          </div>
+          <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <div id="scheduleFilterGroup" style="display: flex; gap: 0.5rem; align-items: center;">
+              <label for="scheduleViewModeSelect" style="font-weight:600; font-size:0.85rem;">檢視模式：</label>
+              <select id="scheduleViewModeSelect" class="form-control" onchange="changeScheduleViewMode(this.value)">
+              </select>
+              <select id="scheduleTargetSelect" class="form-control" style="display:none;" onchange="renderSchedule()">
+              </select>
+              <label style="font-weight:600; font-size:0.85rem; margin-left:0.4rem;">週期週次：</label>
+              <select id="scheduleWeekSelect" class="form-control" onchange="renderSchedule()">
+              </select>
+            </div>
+            
+            <button class="btn btn-primary btn-sm" id="btnToggleEditMode" onclick="toggleScheduleEditMode()" style="display:none;">
+              ➕ 啟動加課/修改模式
+            </button>
+            <button class="btn btn-excel btn-sm" id="btnExportCsv" onclick="exportScheduleToCSV()">
+              📥 匯出 schedule.csv
+            </button>
+            <button class="btn btn-warning btn-sm" id="btnResetDefault" onclick="resetToOfficialSchedule()">
+              🔄 還原 178 節基準底冊
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="window.print()">
+              🖨️ 列印課表
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="adminEditHintBar" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:0.5rem 0.75rem; border-radius:0.375rem; font-size:0.85rem; margin-bottom:0.75rem;">
+            💡 <strong>管理員編輯模式已啟用：</strong>點擊任一課堂可【修改/刪除】；點擊空白堂【—】或【➕ 加抽離/並行課】可直接新增特教或重疊課堂。更正後點擊上方「📥 匯出 schedule.csv」存入 <code>data/</code> 覆蓋！
+          </div>
+          <div id="scheduleContainer" class="table-responsive"></div>
+          
+          <div class="no-print" style="margin-top: 1rem; display: flex; gap: 1rem; font-size: 0.8rem; color: #64748b; flex-wrap: wrap;">
+            <div style="display:flex; align-items:center; gap:0.25rem;">
+              <span style="display:inline-block; width:14px; height:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:2px;"></span>
+              <span>一般基準課</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.25rem;">
+              <span style="display:inline-block; width:14px; height:14px; background:#fef3c7; border:1px solid #fde68a; border-radius:2px;"></span>
+              <span>兼課 / 超鐘點</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.25rem;">
+              <span style="display:inline-block; width:14px; height:14px; background:#f3e8ff; border:1px solid #d8b4fe; border-radius:2px;"></span>
+              <span>第 8 節課後輔導</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.25rem;">
+              <span style="display:inline-block; width:14px; height:14px; background:#ecfdf5; border:1.5px solid #10b981; border-radius:2px;"></span>
+              <span>特教資源班抽離／外加 (左右並排)</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.25rem;">
+              <span style="display:inline-block; width:14px; height:14px; background:#ffedd5; border:2px solid #f97316; border-radius:2px;"></span>
+              <span>經核准之代課安排</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模組 2: 代課任務清單 (含一鍵清空防呆按鈕) -->
+    <section id="tabTasks" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📋</span> <span id="taskViewTitle">公課排代任務與受代明細 (全校總冊)</span>
+          </div>
+          <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <span id="taskScopeNotice" style="font-size:0.85rem; color:#64748b;"></span>
+            
+            <button class="btn btn-secondary btn-sm" onclick="downloadTaskCsvTemplate()" title="下載標準空白 11 欄 CSV 格式">
+              📥 下載空白清冊範本 (CSV)
+            </button>
+            <input type="file" id="taskCsvFileInput" accept=".csv" style="display:none;" onchange="handleTaskCsvUpload(event)">
+            <button class="btn btn-excel btn-sm" id="btnUploadTaskCsv" onclick="triggerTaskCsvUpload()">
+              📁 上傳代課清冊 (CSV)
+            </button>
+            <!-- 🚨 一鍵清空清冊按鈕 (密碼防呆保護) -->
+            <button class="btn btn-danger btn-sm" id="btnClearAllTasks" onclick="openClearTasksModal()" title="清空全部代課紀錄（需輸入防護密碼）">
+              🗑️ 一鍵清空清冊
+            </button>
+            <button class="btn btn-primary btn-sm" id="btnOpenNewSubModal" onclick="openNewSubModal()">
+              ➕ 新增排代記錄
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="custom-table" style="font-size:0.85rem;">
+              <thead>
+                <tr>
+                  <th>代課人姓名</th>
+                  <th>職稱</th>
+                  <th>核准文號</th>
+                  <th>代課起訖日期</th>
+                  <th>代課節數</th>
+                  <th>每節鐘點費</th>
+                  <th>代理導師費</th>
+                  <th>應領金額</th>
+                  <th>被代課教師</th>
+                  <th>代課事由</th>
+                  <th>備註(班級 節 代導費用)</th>
+                  <th>狀態</th>
+                  <th class="no-print" style="width: 70px;">操作</th>
+                </tr>
+              </thead>
+              <tbody id="taskTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模組 3: 自辦調代課工作流 -->
+    <section id="tabWorkflow" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span>🔄</span> 同仁自辦調課與代課工作流 (三方即時線上簽核)</div>
+          <button class="btn btn-primary btn-sm no-print" onclick="openNewSwapModal()">
+            ➕ 發起自辦調代課申請
+          </button>
+        </div>
+        <div class="card-body">
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: #1e40af;">
+            💡 <strong>標準自辦調課流程：</strong>
+            申請教師發起申請 ➔ 受調/代課同仁確認同意 ➔ 教學組長核准生效 ➔ 課表自動即時連動更新。
+          </div>
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>單號</th>
+                  <th>申請教師 (A)</th>
+                  <th>受調 / 代課教師 (B)</th>
+                  <th>原課堂</th>
+                  <th>互調課堂</th>
+                  <th>申請日期</th>
+                  <th>雙方協議進度</th>
+                  <th>組長最終審核</th>
+                  <th class="no-print">操作動作</th>
+                </tr>
+              </thead>
+              <tbody id="workflowTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模組 4: 智慧排代作業台 -->
+    <section id="tabRadar" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span>🎯</span> 智慧排代雷達作業台 (教務防衝堂與最佳師資推薦)</div>
+        </div>
+        <div class="card-body">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+              <label style="font-weight: 700; font-size: 0.85rem; display:block; margin-bottom: 0.25rem;">1. 請假原授課教師：</label>
+              <select id="radarTeacherSelect" class="form-control" style="width: 100%;"></select>
+            </div>
+            <div>
+              <label style="font-weight: 700; font-size: 0.85rem; display:block; margin-bottom: 0.25rem;">2. 選擇日期：</label>
+              <input type="date" id="radarDateInput" class="form-control" style="width: 100%;" value="2026-09-08">
+            </div>
+            <div>
+              <label style="font-weight: 700; font-size: 0.85rem; display:block; margin-bottom: 0.25rem;">3. 公差假請假事由：</label>
+              <input type="text" id="radarReasonInput" class="form-control" style="width: 100%;" placeholder="例如：公假派代出席全縣研習">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模組 5: 月結造冊中心 -->
+    <section id="tabReports" class="tab-content">
+      <div class="card">
+        <div class="card-header no-print">
+          <div class="card-title"><span>📑</span> 115-1 月結造冊中心 (公文標準核銷清冊)</div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <select id="reportMonthSelect" class="form-control" onchange="renderCurrentReport()">
+              <option value="9">115 學年度第 1 學期 (9月份)</option>
+              <option value="10">115 學年度第 1 學期 (10月份)</option>
+              <option value="11">115 學年度第 1 學期 (11月份)</option>
+              <option value="12">115 學年度第 1 學期 (12月份)</option>
+            </select>
+            <select id="reportTypeSelect" class="form-control" onchange="renderCurrentReport()">
+              <option value="A">清冊 A：公課排代鐘點費核銷總冊 (11欄公文標準)</option>
+              <option value="C">清冊 C：第 8 節課後輔導鐘點費清冊 ($450/節)</option>
+              <option value="D">清冊 D：每週兼課 (超鐘點 19 節) 鐘點費清冊 ($400/節)</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ 列印公文清冊</button>
+          </div>
+        </div>
+        <div class="card-body" id="officialReportContainer"></div>
+      </div>
+    </section>
+
+    <!-- 模組 6: 學期初操作專區 -->
+    <section id="tabSettings" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span>⚙️</span> 教職員編制清冊與帳號安全管理 (14組官方帳密)</div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>序號</th>
+                  <th>處室</th>
+                  <th>職稱</th>
+                  <th>教師姓名</th>
+                  <th>領域</th>
+                  <th>兼課</th>
+                  <th>代理導師資格</th>
+                  <th>系統權限</th>
+                  <th>密碼</th>
+                  <th class="no-print" style="width:130px;">帳號管理</th>
+                </tr>
+              </thead>
+              <tbody id="rosterTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== 🚨 一鍵清空代課清冊防呆 Modal ==================== -->
+  <div class="modal-overlay" id="clearTasksModal">
+    <div class="modal-box" style="max-width: 440px;">
+      <div class="modal-header" style="background:#fef2f2; border-bottom:1px solid #fecaca;">
+        <h3 style="font-weight: 700; font-size: 1.1rem; color: #b91c1c;">⚠️ 危險操作：一鍵清空代課清冊</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeClearTasksModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="background:#fff1f2; border:1px solid #fecdd3; padding:0.75rem; border-radius:0.5rem; margin-bottom:1rem; font-size:0.85rem; color:#9f1239; line-height:1.5;">
+          <strong>警告：</strong>此操作將清除目前清冊中的全部紀錄（共 <strong id="clearTasksCount">0</strong> 筆），清空後課表的所有代課覆蓋亦會同步復原。
+        </div>
+        <div style="margin-bottom:0.75rem;">
+          <label style="font-weight:700; display:block; margin-bottom:0.35rem; font-size:0.85rem;">請輸入管理防護密碼以確認執行：</label>
+          <div style="position:relative; display:flex; align-items:center;">
+            <input type="password" id="clearTasksPwdInput" class="form-control" style="width:100%; padding-right:2.5rem;" placeholder="請輸入管理密碼 (094504)" onkeydown="if(event.key==='Enter') executeClearAllTasks()">
+            <button type="button" id="btnToggleClearPwd" onclick="toggleClearPasswordVisibility()" style="position:absolute; right:8px; background:none; border:none; cursor:pointer; font-size:1.1rem; padding:2px;" title="目前為隱藏 (*號)，點擊顯示為明文">
+              🙈
+            </button>
+          </div>
+        </div>
+        <div id="clearTasksErrorMsg" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700;"></div>
+      </div>
+      <div class="modal-footer" style="background:#fef2f2; border-top:1px solid #fecaca; justify-content:space-between;">
+        <button class="btn btn-secondary" onclick="closeClearTasksModal()">取消放棄</button>
+        <button class="btn btn-danger" onclick="executeClearAllTasks()">🚨 確認清空所有資料</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 📥 清冊匯入檢核確認彈窗 (Preview Modal) ==================== -->
+  <div class="modal-overlay" id="csvPreviewModal">
+    <div class="modal-box" style="max-width: 900px;">
+      <div class="modal-header">
+        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">📥 代課清冊匯入檢核精靈 (前 4 筆預覽)</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeTaskImportPreview()">✕ 取消</button>
+      </div>
+      <div class="modal-body">
+        <div id="csvPreviewSummary" style="background:#f8fafc; border:1px solid #cbd5e1; padding:0.75rem 1rem; border-radius:0.5rem; margin-bottom:1rem; font-size:0.85rem; line-height:1.6;">
+        </div>
+        <div class="table-responsive" style="max-height: 240px; border:1px solid #e2e8f0;">
+          <table class="custom-table" style="font-size:0.75rem;">
+            <thead>
+              <tr style="background:#f1f5f9;">
+                <th>項次</th><th>代課人</th><th>職稱</th><th>核准文號</th><th>代課日期</th><th>節數</th><th>金額</th><th>被代教師</th><th>事由</th><th>備註</th>
+              </tr>
+            </thead>
+            <tbody id="csvPreviewTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <span style="font-size:0.8rem; color:#64748b;">請確認欄位（文號、姓名、金額）皆已正確對齊後再匯入。</span>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-secondary" onclick="closeTaskImportPreview()">放棄上傳</button>
+          <button class="btn btn-primary" onclick="confirmTaskCsvImport()">✅ 確認覆蓋匯入</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 新增代課 Modal ==================== -->
+  <div class="modal-overlay" id="newSubModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">➕ 新增公課排代記錄</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeNewSubModal()">✕ 關閉</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">代課日期：</label>
+            <input type="date" id="modalSubDate" class="form-control" style="width: 100%;" value="2026-09-08">
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">班級：</label>
+            <select id="modalSubClass" class="form-control" style="width: 100%;">
+              <option value="701">701 班</option>
+              <option value="801">801 班</option>
+              <option value="901">901 班</option>
+              <option value="902">902 班</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">節次：</label>
+            <select id="modalSubPeriod" class="form-control" style="width: 100%;">
+              <option value="0">早自修 (07:30 - 08:15)</option>
+              <option value="1">第 1 節</option>
+              <option value="2">第 2 節</option>
+              <option value="3">第 3 節</option>
+              <option value="4">第 4 節</option>
+              <option value="5">第 5 節</option>
+              <option value="6">第 6 節</option>
+              <option value="7">第 7 節</option>
+              <option value="8">第 8 節</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">科目：</label>
+            <input type="text" id="modalSubSubject" class="form-control" style="width: 100%;" placeholder="國文、數學、理化...">
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">原授課教師 (請假)：</label>
+            <select id="modalSubOriginalTeacher" class="form-control" style="width: 100%;"></select>
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">代課教師：</label>
+            <select id="modalSubTargetTeacher" class="form-control" style="width: 100%;"></select>
+          </div>
+          <div style="grid-column: span 2;">
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">核准文號 (法定獨立欄)：</label>
+            <input type="text" id="modalSubDocNo" class="form-control" style="width: 100%;" placeholder="例如：115年9月02日府教課二字第1150568430號">
+          </div>
+          <div style="grid-column: span 2;">
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">公差假請假事由：</label>
+            <input type="text" id="modalSubReason" class="form-control" style="width: 100%;" placeholder="例如：公假出席全縣領域召集人會議">
+          </div>
+          <div style="grid-column: span 2; background:#fffbeb; padding:0.6rem; border-radius:0.375rem; border:1px solid #fde68a;">
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:700; color:#b45309;">
+              <input type="checkbox" id="modalSubIsTest">
+              <span>⚠️ 標記為「測試 / 範例」資料（事由將自動加上【測試】，並帶警示紅標籤）</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeNewSubModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveNewSubTask()">確認儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 個人修改密碼 Modal ==================== -->
+  <div class="modal-overlay" id="changePasswordModal">
+    <div class="modal-box" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">🔑 個人密碼安全變更</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeChangePasswordModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">輸入目前舊密碼：</label>
+          <input type="password" id="pwdOldInput" class="form-control" style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">設定新密碼 (至少4字元)：</label>
+          <input type="password" id="pwdNewInput" class="form-control" style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">再次確認新密碼：</label>
+          <input type="password" id="pwdConfirmInput" class="form-control" style="width: 100%;">
+        </div>
+        <div id="changePwdErrorMsg" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeChangePasswordModal()">取消</button>
+        <button class="btn btn-primary" onclick="submitChangePassword()">確認變更</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 管理員：編修教師/重設密碼 Modal ==================== -->
+  <div class="modal-overlay" id="adminEditTeacherModal">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">✏️ 管理員維護教職員資料與密碼</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeAdminEditTeacherModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="adminTeacherId">
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">教師姓名 (唯讀)：</label>
+          <input type="text" id="adminTeacherName" class="form-control" style="width: 100%; background:#f1f5f9;" readonly>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">編制處室：</label>
+            <input type="text" id="adminTeacherDept" class="form-control" style="width: 100%;">
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">申報職稱：</label>
+            <input type="text" id="adminTeacherTitle" class="form-control" style="width: 100%;">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">系統權限等級：</label>
+            <select id="adminTeacherRole" class="form-control" style="width: 100%;">
+              <option value="teacher">一般任課教師</option>
+              <option value="admin">最高全權限管理員</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">變更登入密碼：</label>
+            <input type="text" id="adminTeacherPassword" class="form-control" style="width: 100%; font-family:monospace; font-weight:700;">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">兼課超鐘點 (每週節數)：</label>
+            <input type="number" id="adminTeacherOvertime" class="form-control" style="width: 100%;" min="0" max="10">
+          </div>
+          <div style="display: flex; align-items: center; padding-top: 1.25rem;">
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+              <input type="checkbox" id="adminTeacherSubTutor">
+              <span style="font-weight:700; color:#16a34a;">具備專任代導資格</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAdminEditTeacherModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveAdminTeacherChanges()">💾 儲存變更</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 管理員：課堂編輯/新增彈出視窗 ==================== -->
+  <div class="modal-overlay" id="editCourseModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;" id="modalCourseTitle">✏️ 課堂編輯 / 新增特教抽離課</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeEditCourseModal()">✕ 關閉</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editCourseId">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">授課班級代號：</label>
+            <select id="editCourseClass" class="form-control" style="width: 100%;">
+              <option value="701">701 班 (普通班)</option>
+              <option value="學701">學701 (特教資源班抽離)</option>
+              <option value="801">801 班 (普通班)</option>
+              <option value="學801">學801 (特教資源班抽離)</option>
+              <option value="901">901 班 (普通班)</option>
+              <option value="902">902 班 (普通班)</option>
+              <option value="特教資源班">特教資源班 (全校合班)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">星期：</label>
+            <select id="editCourseDay" class="form-control" style="width: 100%;">
+              <option value="1">星期一</option>
+              <option value="2">星期二</option>
+              <option value="3">星期三</option>
+              <option value="4">星期四</option>
+              <option value="5">星期五</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">節次：</label>
+            <select id="editCoursePeriod" class="form-control" style="width: 100%;">
+              <option value="0">早自修 (07:30 - 08:15)</option>
+              <option value="1">第 1 節 (08:25 - 09:10)</option>
+              <option value="2">第 2 節 (09:20 - 10:05)</option>
+              <option value="3">第 3 節 (10:15 - 11:00)</option>
+              <option value="4">第 4 節 (11:10 - 11:55)</option>
+              <option value="5">第 5 節 (13:10 - 13:55)</option>
+              <option value="6">第 6 節 (14:05 - 14:50)</option>
+              <option value="7">第 7 節 (15:00 - 15:45)</option>
+              <option value="8">第 8 節 (16:00 - 16:45 輔導課)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">授課科目名稱：</label>
+            <input type="text" id="editCourseSubject" class="form-control" style="width: 100%;" placeholder="例如：國文、數學、學習策略">
+          </div>
+          <div style="grid-column: span 2;">
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">授課教師：</label>
+            <select id="editCourseTeacher" class="form-control" style="width: 100%;">
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between;">
+        <button class="btn btn-danger" id="btnDeleteCourse" onclick="deleteCurrentCourse()">🗑️ 刪除此堂課</button>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-secondary" onclick="closeEditCourseModal()">取消</button>
+          <button class="btn btn-primary" onclick="saveCourseChange()">💾 儲存更正</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 發起自辦調課 Modal ==================== -->
+  <div class="modal-overlay" id="newSwapModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">➕ 發起自辦調代課申請</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeNewSwapModal()">✕ 關閉</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">申請人 (教師 A)：</label>
+            <input type="text" id="modalSwapTeacherA" class="form-control" style="width: 100%; background: #f1f5f9;" readonly>
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">受調 / 代課教師 (教師 B)：</label>
+            <select id="modalSwapTeacherB" class="form-control" style="width: 100%;"></select>
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">原課堂 (申請人原課)：</label>
+            <input type="text" id="modalSwapClassA" class="form-control" style="width: 100%;" placeholder="例：週二第6節 701 數學">
+          </div>
+          <div>
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">互調課堂 (或純代課)：</label>
+            <input type="text" id="modalSwapClassB" class="form-control" style="width: 100%;" placeholder="例：互調週四第4節 701 英語">
+          </div>
+          <div style="grid-column: span 2;">
+            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">調課事由說明：</label>
+            <input type="text" id="modalSwapReason" class="form-control" style="width: 100%;" placeholder="例：因事調課互代，已徵得同仁同意">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeNewSwapModal()">取消</button>
+        <button class="btn btn-primary" onclick="submitNewSwap()">送出申請</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="data/schedule_base.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
