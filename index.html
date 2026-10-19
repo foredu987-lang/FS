@@ -172,7 +172,7 @@
       </div>
     </section>
 
-    <!-- 模組 2: 代課任務清單 (含一鍵清空防呆按鈕) -->
+    <!-- 模組 2: 代課任務清單 (法定11欄標準順序、下載空白範本、一鍵清空防呆) -->
     <section id="tabTasks" class="tab-content">
       <div class="card">
         <div class="card-header">
@@ -189,7 +189,6 @@
             <button class="btn btn-excel btn-sm" id="btnUploadTaskCsv" onclick="triggerTaskCsvUpload()">
               📁 上傳代課清冊 (CSV)
             </button>
-            <!-- 🚨 一鍵清空清冊按鈕 (密碼防呆保護) -->
             <button class="btn btn-danger btn-sm" id="btnClearAllTasks" onclick="openClearTasksModal()" title="清空全部代課紀錄（需輸入防護密碼）">
               🗑️ 一鍵清空清冊
             </button>
@@ -373,7 +372,7 @@
 
   <!-- ==================== 📥 清冊匯入檢核確認彈窗 (Preview Modal) ==================== -->
   <div class="modal-overlay" id="csvPreviewModal">
-    <div class="modal-box" style="max-width: 900px;">
+    <div class="modal-box" style="max-width: 920px;">
       <div class="modal-header">
         <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">📥 代課清冊匯入檢核精靈 (前 4 筆預覽)</h3>
         <button class="btn btn-secondary btn-sm" onclick="closeTaskImportPreview()">✕ 取消</button>
@@ -385,24 +384,25 @@
           <table class="custom-table" style="font-size:0.75rem;">
             <thead>
               <tr style="background:#f1f5f9;">
-                <th>項次</th><th>代課人</th><th>職稱</th><th>核准文號</th><th>代課日期</th><th>節數</th><th>金額</th><th>被代教師</th><th>事由</th><th>備註</th>
+                <th>項次</th><th>代課人</th><th>職稱</th><th>核准文號</th><th>代課日期</th><th>節次位置</th><th>金額</th><th>被代教師</th><th>事由</th><th>備註</th>
               </tr>
             </thead>
             <tbody id="csvPreviewTableBody"></tbody>
           </table>
         </div>
       </div>
-      <div class="modal-footer" style="justify-content: space-between;">
-        <span style="font-size:0.8rem; color:#64748b;">請確認欄位（文號、姓名、金額）皆已正確對齊後再匯入。</span>
-        <div style="display:flex; gap:0.5rem;">
-          <button class="btn btn-secondary" onclick="closeTaskImportPreview()">放棄上傳</button>
-          <button class="btn btn-primary" onclick="confirmTaskCsvImport()">✅ 確認覆蓋匯入</button>
+      <div class="modal-footer" style="justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+        <span style="font-size:0.8rem; color:#64748b;">請確認欄位與日期皆已正確對齊後再匯入。</span>
+        <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary" onclick="closeTaskImportPreview()">放棄</button>
+          <button class="btn btn-primary" onclick="confirmTaskCsvImport('replace')">🔄 覆蓋全冊</button>
+          <button class="btn btn-success" onclick="confirmTaskCsvImport('append')">➕ 累加合併 (保留舊月分，接續新增)</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ==================== 新增代課 Modal ==================== -->
+  <!-- ==================== 新增代課 Modal (含獨立核准文號與測試標註) ==================== -->
   <div class="modal-overlay" id="newSubModal">
     <div class="modal-box">
       <div class="modal-header">

@@ -1,11 +1,11 @@
 // ==========================================================================
 // 雲林縣立飛沙國民中學 115-1 整合系統核心邏輯 (app.js)
-// 包含：修正備註欄誤判Bug、自動拆解一筆多節、全格式日期解析、密碼防呆一鍵清空
+// 包含：民國7碼(1151006)精確解析、支援跨月累加不覆蓋、開放全員查閱各班課表、總表修復
 // ==========================================================================
 
 const STORAGE_KEY = "feisha_schedule_115_1_web_rbac";
 const SESSION_KEY = "feisha_session_user_115_1";
-const SEMESTER_START_DATE = "2026-08-31";
+const SEMESTER_START_DATE = "2026-08-31"; // 115-1 開學基準日
 
 const ADMIN_SECURITY_PASSWORDS = ["094504", "fatman", "apexczone"];
 
@@ -91,23 +91,54 @@ function getWeekDates(weekNum) {
   return weekDates;
 }
 
-// 核心日期正規化：相容 8/31~8/31, 9/1~9/1, 0901-0901, 2026-08-31
+// 核心：全格式日期標準化 (精準支援民國 7 碼 1151002、115/10/02、9/1~9/1)
 function normalizeToDateString(rawDateStr, fallbackYear = 2026) {
   if (!rawDateStr) return "";
   const s = String(rawDateStr).trim();
-  
-  const mFull = s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+
+  // 1. 已經是西元標準 YYYY-MM-DD 或 YYYY/MM/DD
+  const mFull = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
   if (mFull) {
     return `${mFull[1]}-${String(mFull[2]).padStart(2, "0")}-${String(mFull[3]).padStart(2, "0")}`;
   }
 
-  const first = s.split(/[~-]/)[0].trim();
-  const mSlash = first.match(/(\d{1,2})\/(\d{1,2})/);
-  if (mSlash) {
-    return `${fallbackYear}-${String(mSlash[1]).padStart(2, "0")}-${String(mSlash[2]).padStart(2, "0")}`;
+  // 取第一段區間（分割 ~ 或 ～）
+  let first = s.split(/[~～]/)[0].trim();
+
+  // 2. 🌟 關鍵修正：民國 7 碼純數字 (例如: 1151002, 1151006, 1150831)
+  const mRoc7 = first.match(/^(\d{3})(\d{2})(\d{2})$/);
+  if (mRoc7) {
+    const y = parseInt(mRoc7[1]) + 1911; // 115 + 1911 = 2026
+    const m = mRoc7[2];
+    const d = mRoc7[3];
+    return `${y}-${m}-${d}`;
   }
 
-  const m4D = first.match(/(\d{2})(\d{2})/);
+  // 3. 民國含分隔號 (例如: 115/10/02, 115-10-02, 115.10.02)
+  const mRocSep = first.match(/^(\d{2,3})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (mRocSep) {
+    let y = parseInt(mRocSep[1]);
+    if (y < 1900) y += 1911;
+    const m = String(mRocSep[2]).padStart(2, "0");
+    const d = String(mRocSep[3]).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  // 4. 月/日 (例如: 8/31, 9/1, 10/2)
+  const mSlash = first.match(/^(\d{1,2})[-/.](\d{1,2})$/);
+  if (mSlash) {
+    const m = String(mSlash[1]).padStart(2, "0");
+    const d = String(mSlash[2]).padStart(2, "0");
+    return `${fallbackYear}-${m}-${d}`;
+  }
+
+  // 5. 若是 0901-0901 連接碼
+  if (first.includes("-") && first.split("-")[0].length === 4) {
+    first = first.split("-")[0].trim();
+  }
+
+  // 6. 四碼月日 (例如: 0901, 1002, 0831)
+  const m4D = first.match(/^(\d{2})(\d{2})$/);
   if (m4D) {
     return `${fallbackYear}-${m4D[1]}-${m4D[2]}`;
   }
@@ -131,7 +162,6 @@ function getWeekNumberByDate(dateStr) {
   return (weekNum >= 1 && weekNum <= 21) ? weekNum : 1;
 }
 
-// 核心解析：從備註文字中抓出所有的 (班級, 節次) 組合
 function extractClassAndPeriodsFromNote(noteStr) {
   const s = String(noteStr || "").trim();
   const numMap = {
@@ -139,7 +169,6 @@ function extractClassAndPeriodsFromNote(noteStr) {
     '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8
   };
 
-  // 1. 若備註有兩個班級 (例如: "901第六節 902 第七節")
   const multiMatches = [...s.matchAll(/(701|801|901|902|學701|學801)[^\d一二三四五六七八早]*第?\s*([0-8一二三四五六七八早])\s*節?/g)];
   if (multiMatches.length > 0) {
     return multiMatches.map(m => ({
@@ -148,7 +177,6 @@ function extractClassAndPeriodsFromNote(noteStr) {
     }));
   }
 
-  // 2. 若是單一班級但有多節 (例如: "701 第五節 701第六節" 或 "801第五節")
   let currentClass = "701";
   if (s.includes("801")) currentClass = "801";
   else if (s.includes("901")) currentClass = "901";
@@ -178,7 +206,7 @@ function isTestItem(t) {
 }
 
 // ==========================================================================
-// 初始化核心
+// 初始化核心 (自動修復既有 10 月任務日期)
 // ==========================================================================
 function initDatabase() {
   try {
@@ -190,7 +218,11 @@ function initDatabase() {
           if (Array.isArray(parsed.teachers) && parsed.teachers.length > 0) appData.teachers = parsed.teachers;
           if (Array.isArray(parsed.schedule) && parsed.schedule.length > 0) appData.schedule = parsed.schedule;
           if (Array.isArray(parsed.tasks)) {
-            appData.tasks = parsed.tasks.filter(t => !t.id || !t.id.startsWith("SUB_"));
+            // 🛠️ 自動校正修復舊快取中的日期（確保 1151002 轉為 2026-10-02）
+            appData.tasks = parsed.tasks.filter(t => !t.id || !t.id.startsWith("SUB_")).map(t => {
+              t.date = normalizeToDateString(t.dateRange || t.date);
+              return t;
+            });
           }
           if (Array.isArray(parsed.swaps)) appData.swaps = parsed.swaps;
         }
@@ -463,9 +495,9 @@ function resetTeacherPasswordDefault(teacherId) {
   }
 }
 
-// ==========================================
-// 權限與身分切換
-// ==========================================
+// ==========================================================================
+// 權限與身分切換 (🌟 開放所有同仁/承辦人均可自由查閱各班課表與全校總表)
+// ==========================================================================
 function isCurrentAdmin() {
   return ADMIN_TEACHERS.includes(appData.currentUser);
 }
@@ -616,16 +648,18 @@ function switchCurrentUser(userName) {
     if (modeSelect) modeSelect.style.display = "inline-block";
     if (modeLabel && modeLabel.tagName === "LABEL") modeLabel.style.display = "inline-block";
 
+    // 管理員完整選單
     modeSelect.innerHTML = `
       <option value="personal">個人課表 (當前管理者)</option>
       <option value="teacher_select">指定個別教師課表</option>
-      <option value="class">班級整週課表 (含抽離)</option>
-      <option value="all_classes">全校班級總表</option>
+      <option value="class">班級整週課表 (指定班級)</option>
+      <option value="all_classes">全校班級總表 (701~902)</option>
       <option value="matrix">全校教師矩陣總表 (管理員)</option>
     `;
     modeSelect.disabled = false;
 
   } else {
+    // 一般任課教師 / 承辦人 / 主任 / 導師
     const uObj = appData.teachers.find(t => t.name === userName);
     if (btnChangePwd) btnChangePwd.style.display = "inline-flex";
     if (exportBtn) exportBtn.style.display = "none";
@@ -640,44 +674,39 @@ function switchCurrentUser(userName) {
     if (modeSelect) modeSelect.style.display = "inline-block";
     if (modeLabel && modeLabel.tagName === "LABEL") modeLabel.style.display = "inline-block";
 
-    if (isCurrentHomeroomTeacher()) {
+    const isHomeroom = isCurrentHomeroomTeacher();
+    const isSpecialEd = isCurrentSpecialEdTeacher();
+
+    if (isHomeroom) {
       const myClass = HOMEROOM_MAP[appData.currentUser];
-      if (userBadge) {
-        userBadge.className = "role-badge badge-teacher";
-        userBadge.textContent = `👨‍🏫 班導師`;
-      }
+      if (userBadge) { userBadge.className = "role-badge badge-teacher"; userBadge.textContent = `👨‍🏫 班導師`; }
       if (userNameDisplay) userNameDisplay.textContent = `${userName} [${myClass} 班導師]`;
-      modeSelect.innerHTML = `
-        <option value="personal">個人授課課表 (本人)</option>
-        <option value="my_homeroom">🏫 ${myClass} 班每週課表 (本班導師視角)</option>
-      `;
-      modeSelect.disabled = false;
-
-    } else if (isCurrentSpecialEdTeacher()) {
-      if (userBadge) {
-        userBadge.className = "role-badge badge-teacher";
-        userBadge.textContent = `🌿 特教教師`;
-      }
+    } else if (isSpecialEd) {
+      if (userBadge) { userBadge.className = "role-badge badge-teacher"; userBadge.textContent = `🌿 特教教師`; }
       if (userNameDisplay) userNameDisplay.textContent = `${userName} [特教資源班]`;
-      modeSelect.innerHTML = `
-        <option value="personal">個人授課課表 (本人)</option>
-        <option value="resource_class">🌿 特教資源班 (全校抽離總表)</option>
-        <option value="sp_701">學701 抽離課表</option>
-        <option value="sp_801">學801 抽離課表</option>
-      `;
-      modeSelect.disabled = false;
-
     } else {
-      if (userBadge) {
-        userBadge.className = "role-badge badge-teacher";
-        userBadge.textContent = `👤 任課教師`;
-      }
+      if (userBadge) { userBadge.className = "role-badge badge-teacher"; userBadge.textContent = `👤 任課教師 / 承辦人`; }
       if (userNameDisplay) userNameDisplay.textContent = `${userName} [${uObj ? uObj.title : '教師'}]`;
-      modeSelect.innerHTML = `<option value="personal">個人授課課表 (本人)</option>`;
-      modeSelect.disabled = true;
     }
+
+    // 🌟 關鍵開放：所有教職員都能自由查看各班級課表與全校總表！
+    let optionsHtml = `<option value="personal">個人授課課表 (本人)</option>`;
+    if (isHomeroom) {
+      optionsHtml += `<option value="my_homeroom">🏫 ${HOMEROOM_MAP[appData.currentUser]} 班每週課表 (本班導師視角)</option>`;
+    }
+    if (isSpecialEd) {
+      optionsHtml += `<option value="resource_class">🌿 特教資源班 (全校抽離總表)</option>`;
+    }
+    optionsHtml += `
+      <option value="class">班級整週課表 (指定 701~902)</option>
+      <option value="all_classes">全校班級總表 (701~902)</option>
+    `;
+
+    modeSelect.innerHTML = optionsHtml;
+    modeSelect.disabled = false;
   }
 
+  changeScheduleViewMode(modeSelect ? modeSelect.value : "personal");
   renderAllViews();
 }
 
@@ -725,7 +754,7 @@ function renderAllViews() {
 }
 
 // ==========================================================================
-// 模組 1: 課表渲染 (75px 緊湊高度、左右分割排版)
+// 模組 1: 課表渲染引擎 (全體皆可查看班級、修復總表渲染)
 // ==========================================================================
 function changeScheduleViewMode(mode) {
   const targetSelect = document.getElementById("scheduleTargetSelect");
@@ -741,7 +770,8 @@ function changeScheduleViewMode(mode) {
       if (t.name === appData.currentUser) opt.selected = true;
       targetSelect.appendChild(opt);
     });
-  } else if (mode === "class" && isCurrentAdmin()) {
+  } else if (mode === "class") {
+    // 🌟 不分身分，所有人皆可選班級
     targetSelect.style.display = "inline-block";
     getSafeClasses().forEach(cls => {
       const opt = document.createElement("option");
@@ -783,21 +813,44 @@ function renderSchedule() {
   if (mode === "personal") {
     title.textContent = `📅 ${appData.currentUser} 老師授課課表 ${weekSuffix}`;
     container.innerHTML = generateTeacherScheduleHTML(appData.currentUser, selectedWeek);
+
   } else if (mode === "my_homeroom" && isCurrentHomeroomTeacher()) {
     const myClass = HOMEROOM_MAP[appData.currentUser];
     title.textContent = `🏫 ${myClass} 班授課課表 ${weekSuffix}`;
     container.innerHTML = generateSingleClassScheduleHTML(myClass, selectedWeek);
+
+  } else if (mode === "resource_class") {
+    title.textContent = `🌿 特教資源班 抽離總表 ${weekSuffix}`;
+    container.innerHTML = generateSingleClassScheduleHTML("RESOURCE_CLASS", selectedWeek);
+
+  } else if (mode === "class") {
+    const cls = targetSelect && targetSelect.value ? targetSelect.value : "701";
+    title.textContent = (cls === "RESOURCE_CLASS") ? `🌿 特教資源班 抽離總表 ${weekSuffix}` : `🏫 ${cls} 班每週課表 ${weekSuffix}`;
+    container.innerHTML = generateSingleClassScheduleHTML(cls, selectedWeek);
+
+  } else if (mode === "all_classes") {
+    // 🌟 核心修復：全校班級總表完整渲染四個班級！
+    title.textContent = `🏫 全校班級總課表 (701、801、901、902) ${weekSuffix}`;
+    let html = "";
+    getSafeClasses().forEach(c => {
+      html += `
+        <div style="margin-bottom: 2rem;">
+          <h4 style="font-weight:700; color:#1e40af; margin-bottom:0.5rem; font-size:1.05rem;">🏫 ${c} 班課表</h4>
+          ${generateSingleClassScheduleHTML(c, selectedWeek)}
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+
   } else if (mode === "teacher_select" && isCurrentAdmin()) {
     const tName = targetSelect ? targetSelect.value : appData.currentUser;
     title.textContent = `📅 ${tName} 老師授課課表 ${weekSuffix}`;
     container.innerHTML = generateTeacherScheduleHTML(tName, selectedWeek);
-  } else if (mode === "class" && isCurrentAdmin()) {
-    const cls = targetSelect ? targetSelect.value : "701";
-    title.textContent = `🏫 ${cls} 班授課課表 ${weekSuffix}`;
-    container.innerHTML = generateSingleClassScheduleHTML(cls, selectedWeek);
+
   } else if (mode === "matrix" && isCurrentAdmin()) {
     title.textContent = "全校教師矩陣總表 (管理員專屬)";
     container.innerHTML = generateFullMatrixHTML();
+
   } else {
     title.textContent = `📅 ${appData.currentUser} 老師授課課表 ${weekSuffix}`;
     container.innerHTML = generateTeacherScheduleHTML(appData.currentUser, selectedWeek);
@@ -995,7 +1048,7 @@ function generateTeacherScheduleHTML(teacherName, selectedWeek) {
             const clickAttr = canEdit ? `onclick="openEditCourseModal('${item.id}')" style="cursor:pointer;"` : "";
 
             cellContent += `
-              <div class="period-cell ${cellCls}" ${isSpecialEd ? 'style="background:#ecfdf5; border:1.5px solid #10b981; color:#065f46;"' : ''} ${clickAttr}>
+              <div class="period-cell ${cellCls}" ${clickAttr}>
                 ${isSpecialEd ? `<span class="tag-overtime" style="background:#10b981;">🌱 特教 (${item.class_id})</span>` : ''}
                 <strong>${item.class_id} ${item.subject}</strong>
                 ${item.is_overtime ? `<span class="tag-overtime">兼課超鐘點</span>` : ''}
@@ -1023,7 +1076,7 @@ function generateTeacherScheduleHTML(teacherName, selectedWeek) {
 }
 
 // ==========================================================================
-// 模組 2: 代課清冊 (含一鍵清空防呆機制)
+// 模組 2: 代課清冊 (支援累加合併、全格式相容)
 // ==========================================================================
 function renderTasks() {
   const tbody = document.getElementById("taskTableBody");
@@ -1185,7 +1238,7 @@ function triggerTaskCsvUpload() {
   }
 }
 
-// 核心：動態欄位智慧映射 (解決備註欄位被代導費吞食Bug、支援一筆拆多節)
+// 核心：動態欄位智慧映射 (備註欄最先匹配、民國 7 碼解析、多節拆解)
 function handleTaskCsvUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -1209,7 +1262,6 @@ function handleTaskCsvUpload(event) {
           headerIdx = i;
           const headers = allLines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"\vert{}"$/g, "").trim());
           
-          // 🛠️ 嚴格優先順序判斷：備註欄最先匹配，防止被代導費搶走
           headers.forEach((h, idx) => {
             if (h.includes("備註") || h.startsWith("備註")) colMap.note = idx;
             else if (h.includes("代課人") || h.includes("姓名")) colMap.subTeacher = idx;
@@ -1259,9 +1311,9 @@ function handleTaskCsvUpload(event) {
         const origTeacher = normalizeTeacherName(parts[colMap.origTeacher] || "");
         const reason = parts[colMap.reason] || "公假派代";
         const note = parts[colMap.note] || "";
+        // 🌟 正確解析 1151002 ➔ 2026-10-02
         const date = normalizeToDateString(dateRange);
 
-        // 核心：若一筆清冊寫了多節（例如 701第五節 701第六節），拆解出每節課以精確連動課表
         const classPeriodPairs = extractClassAndPeriodsFromNote(note);
 
         classPeriodPairs.forEach((pair, pairIdx) => {
@@ -1281,7 +1333,7 @@ function handleTaskCsvUpload(event) {
             note: note,
             classId: pair.classId,
             period: pair.period,
-            subject: "課堂授課", // 課表將自動繼承該班原課堂之正式科目
+            subject: "課堂授課",
             isTest: isTestItem({ subTeacher: subName, reason, note, docNo }),
             status: "已核銷"
           });
@@ -1312,7 +1364,8 @@ function showTaskImportPreview(list, skippedCount) {
   const testCount = list.filter(isTestItem).length;
   summary.innerHTML = `
     ✅ <strong>解析成功：</strong>共讀取 <strong>${list.length}</strong> 節代課紀錄（已自動濾除 ${skippedCount} 行標題/雜訊列）。<br>
-    ${testCount > 0 ? `<span style="color:#dc2626; font-weight:700;">⚠️ 系統偵測到其中有 ${testCount} 筆含有「測試/範例」標記，匯入後將特別警示！</span>` : '<span style="color:#16a34a; font-weight:700;">✨ 班級、節次與日期已完全對齊，無錯位問題。</span>'}
+    ${testCount > 0 ? `<span style="color:#dc2626; font-weight:700;">⚠️ 系統偵測到其中有 ${testCount} 筆含有「測試/範例」標記，匯入後將特別警示！</span><br>` : ''}
+    <span style="color:#0369a1; font-weight:700;">💡 您可選擇【➕ 累加合併】（保留 9 月資料，接續新增 10 月）或【🔄 覆蓋全冊】。</span>
   `;
 
   tbody.innerHTML = "";
@@ -1342,15 +1395,25 @@ function closeTaskImportPreview() {
   pendingImportTasks = [];
 }
 
-function confirmTaskCsvImport() {
+// 🌟 核心升級：支援 mode = 'append' (累加合併) 與 mode = 'replace' (覆蓋全冊)
+function confirmTaskCsvImport(importMode = 'append') {
   if (!pendingImportTasks || pendingImportTasks.length === 0) return;
-  appData.tasks = pendingImportTasks;
+
+  if (importMode === 'replace') {
+    appData.tasks = pendingImportTasks;
+  } else {
+    // 累加合併：防重複機制（日期+班級+節次+代課人+原教師相同者自動跳過）
+    const existingKeys = new Set(appData.tasks.map(t => `${t.date}_${t.classId}_${t.period}_${t.subTeacher}_${t.originalTeacher}`));
+    const newItems = pendingImportTasks.filter(t => !existingKeys.has(`${t.date}_${t.classId}_${t.period}_${t.subTeacher}_${t.originalTeacher}`));
+    appData.tasks = [...appData.tasks, ...newItems];
+  }
+
   saveToLocalStorage();
   closeTaskImportPreview();
 
-  // 自動切換到第一筆代課發生的週次
-  if (appData.tasks.length > 0 && appData.tasks[0].date) {
-    const targetWeek = getWeekNumberByDate(appData.tasks[0].date);
+  // 自動切換至新資料的第一個日期所對應之週次
+  if (pendingImportTasks.length > 0 && pendingImportTasks[0].date) {
+    const targetWeek = getWeekNumberByDate(pendingImportTasks[0].date);
     const weekSelect = document.getElementById("scheduleWeekSelect");
     if (weekSelect) weekSelect.value = targetWeek.toString();
   }
@@ -1358,7 +1421,12 @@ function confirmTaskCsvImport() {
   renderTasks();
   renderSchedule();
   renderCurrentReport();
-  alert(`✅ 成功匯入 ${appData.tasks.length} 節代課！已自動切換至對應週次課表，代課橘色卡片已即時生效。`);
+  
+  if (importMode === 'replace') {
+    alert(`✅ 已成功以新清冊覆蓋資料庫（全冊共 ${appData.tasks.length} 節）！`);
+  } else {
+    alert(`✅ 已成功累加合併新代課紀錄！目前清冊累積總計 ${appData.tasks.length} 節（9月與10月已完整保留並存）。`);
+  }
 }
 
 function openNewSubModal() {
@@ -1469,7 +1537,7 @@ function renderCurrentReport() {
   let html = `
     <div style="text-align:center; margin-bottom:1.5rem;">
       <h2 style="font-size:1.5rem; font-weight:800; letter-spacing: 2px;">雲林縣立飛沙國民中學</h2>
-      <h3 style="font-size:1.2rem; font-weight:700;">115 學年度第 1 學期 (9月份) 公課排代鐘點費核銷清冊 (公文標準)</h3>
+      <h3 style="font-size:1.2rem; font-weight:700;">115 學年度第 1 學期 (9~10月份) 公課排代鐘點費核銷清冊 (公文標準)</h3>
     </div>
     <table class="custom-table" style="border:1px solid #000; width:100%; font-size:0.8rem;">
       <thead>
@@ -1483,7 +1551,6 @@ function renderCurrentReport() {
   if (appData.tasks.length === 0) {
     html += `<tr><td colspan="11" style="text-align:center; padding:2rem; color:#64748b;">目前尚無已核准之代課核銷紀錄</td></tr>`;
   } else {
-    // 依原始清冊項次展示 (多節合併統計不重複計算總額)
     appData.tasks.forEach((t) => {
       const isTest = isTestItem(t);
       totalPeriods += (t.periodsCount || 0);
