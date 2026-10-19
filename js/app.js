@@ -1,13 +1,12 @@
 // ==========================================================================
 // 雲林縣立飛沙國民中學 115-1 整合系統核心邏輯 (app.js)
-// 包含：一鍵清空防呆密碼驗證、下載空白範本、動態欄位智慧映射、測試醒目標註
+// 包含：智慧日期解析 (相容 ~ 與 /)、國字節次相容、代課自動連動週次切換
 // ==========================================================================
 
 const STORAGE_KEY = "feisha_schedule_115_1_web_rbac";
 const SESSION_KEY = "feisha_session_user_115_1";
-const SEMESTER_START_DATE = "2026-08-31";
+const SEMESTER_START_DATE = "2026-08-31"; // 115-1 開學基準日
 
-// 系統核心安全管理密碼庫 (支援學校代號與管理員密碼)
 const ADMIN_SECURITY_PASSWORDS = ["094504", "fatman", "apexczone"];
 
 const DEFAULT_CLASSES = ["701", "801", "901", "902"];
@@ -56,7 +55,7 @@ const OFFICIAL_STAFF_CREDENTIALS = [
 let appData = {
   teachers: JSON.parse(JSON.stringify(OFFICIAL_STAFF_CREDENTIALS)),
   schedule: (typeof LOCKED_OFFICIAL_SCHEDULE !== "undefined" && LOCKED_OFFICIAL_SCHEDULE.length > 0) ? LOCKED_OFFICIAL_SCHEDULE : [],
-  tasks: [], // 預設乾淨無假資料
+  tasks: [],
   swaps: [],
   currentUser: "施銘權"
 };
@@ -92,16 +91,71 @@ function getWeekDates(weekNum) {
   return weekDates;
 }
 
+// 核心日期正規化：相容 9/1~9/1, 8/31~8/31, 0901-0901, 2026-09-01
+function normalizeToDateString(rawDateStr, fallbackYear = 2026) {
+  if (!rawDateStr) return "";
+  const s = String(rawDateStr).trim();
+  
+  // 已經是 YYYY-MM-DD
+  const mFull = s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (mFull) {
+    return `${mFull[1]}-${String(mFull[2]).padStart(2, "0")}-${String(mFull[3]).padStart(2, "0")}`;
+  }
+
+  // 以 ~ 或 - 分割取起始日
+  const first = s.split(/[~-]/)[0].trim();
+  
+  // M/D 或 MM/DD
+  const mSlash = first.match(/(\d{1,2})\/(\d{1,2})/);
+  if (mSlash) {
+    return `${fallbackYear}-${String(mSlash[1]).padStart(2, "0")}-${String(mSlash[2]).padStart(2, "0")}`;
+  }
+
+  // 四碼如 0901, 0831
+  const m4D = first.match(/(\d{2})(\d{2})/);
+  if (m4D) {
+    return `${fallbackYear}-${m4D[1]}-${m4D[2]}`;
+  }
+
+  return s;
+}
+
+// 判斷兩日期是否同一天
 function isSameDate(d1, d2) {
   if (!d1 || !d2) return false;
-  const parse = (d) => {
-    if (typeof d === "string") {
-      const parts = d.replace(/\//g, "-").split("-");
-      if (parts.length === 3) return `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
-    }
-    return d;
+  return normalizeToDateString(d1) === normalizeToDateString(d2);
+}
+
+// 依日期推算屬於第幾週 (開學日 2026-08-31)
+function getWeekNumberByDate(dateStr) {
+  const normalized = normalizeToDateString(dateStr);
+  if (!normalized) return 1;
+  const d = new Date(normalized);
+  const start = new Date(SEMESTER_START_DATE);
+  const diffDays = Math.floor((d - start) / (24 * 60 * 60 * 1000));
+  if (diffDays < 0) return 1;
+  const weekNum = Math.floor(diffDays / 7) + 1;
+  return (weekNum >= 1 && weekNum <= 21) ? weekNum : 1;
+}
+
+// 核心節次解析：精確相容阿拉伯數字與國字（防止 801第五節 被誤判成第 8 節或第 1 節）
+function parsePeriodFromNote(noteStr) {
+  if (!noteStr) return 1;
+  const s = String(noteStr).trim();
+  if (s.includes("早自")) return 0;
+
+  const numMap = {
+    '早': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8,
+    '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8
   };
-  return parse(d1) === parse(d2);
+
+  // 優先匹配「第X節」或「X節」
+  const m = s.match(/第\s*([0-8一二三四五六七八早])|([0-8一二三四五六七八早])\s*節/);
+  if (m) {
+    const val = m[1] || m[2];
+    return numMap[val] !== undefined ? numMap[val] : 1;
+  }
+  return 1;
 }
 
 function isTestItem(t) {
@@ -124,8 +178,12 @@ function initDatabase() {
           if (Array.isArray(parsed.teachers) && parsed.teachers.length > 0) appData.teachers = parsed.teachers;
           if (Array.isArray(parsed.schedule) && parsed.schedule.length > 0) appData.schedule = parsed.schedule;
           if (Array.isArray(parsed.tasks)) {
-            // 自動過濾 SUB_ 假代課
-            appData.tasks = parsed.tasks.filter(t => !t.id || !t.id.startsWith("SUB_"));
+            // 清理假代課並對現存任務日期與節次自動標準化補正
+            appData.tasks = parsed.tasks.filter(t => !t.id || !t.id.startsWith("SUB_")).map(t => {
+              if (t.dateRange && !t.date) t.date = normalizeToDateString(t.dateRange);
+              if (t.note && (!t.period || t.period === 1)) t.period = parsePeriodFromNote(t.note);
+              return t;
+            });
           }
           if (Array.isArray(parsed.swaps)) appData.swaps = parsed.swaps;
         }
@@ -184,7 +242,7 @@ function saveToLocalStorage() {
 }
 
 // ==========================================================================
-// 登入認證與密碼眼睛圖示
+// 登入認證
 // ==========================================================================
 function openLoginModal() {
   const overlay = document.getElementById("loginOverlay");
@@ -419,9 +477,9 @@ function resetTeacherPasswordDefault(teacherId) {
   }
 }
 
-// ==========================================================================
+// ==========================================
 // 權限與身分切換
-// ==========================================================================
+// ==========================================
 function isCurrentAdmin() {
   return ADMIN_TEACHERS.includes(appData.currentUser);
 }
@@ -681,7 +739,7 @@ function renderAllViews() {
 }
 
 // ==========================================================================
-// 模組 1: 課表渲染 (75px 等高左右分割)
+// 模組 1: 課表渲染 (75px 緊湊高度、左右分割排版)
 // ==========================================================================
 function changeScheduleViewMode(mode) {
   const targetSelect = document.getElementById("scheduleTargetSelect");
@@ -1047,7 +1105,6 @@ function renderTasks() {
   });
 }
 
-// 核心：一鍵清空防呆 Modal 開關與執行
 function openClearTasksModal() {
   if (!isCurrentAdmin()) {
     alert("只有管理員有權限清空代課清冊！");
@@ -1220,15 +1277,10 @@ function handleTaskCsvUpload(event) {
         else if (note.includes("學701")) classId = "學701";
         else if (note.includes("學801")) classId = "學801";
 
-        let period = 1;
-        const periodMatch = note.match(/第?\s*([0-8])\s*節/);
-        if (periodMatch) period = parseInt(periodMatch[1]);
-
-        let date = dateRange;
-        if (dateRange.includes("-")) {
-          const rawD = dateRange.split("-")[0].trim();
-          if (rawD.length === 4) date = `2026-${rawD.slice(0, 2)}-${rawD.slice(2)}`;
-        }
+        // 精準抓取國字或阿拉伯數字節次
+        const period = parsePeriodFromNote(note);
+        // 精準標準化日期 (例如 9/1~9/1 ➔ 2026-09-01)
+        const date = normalizeToDateString(dateRange);
 
         parsedList.push({
           id: `TASK_CSV_${Date.now()}_${i}`,
@@ -1276,7 +1328,7 @@ function showTaskImportPreview(list, skippedCount) {
   const testCount = list.filter(isTestItem).length;
   summary.innerHTML = `
     ✅ <strong>解析成功：</strong>共讀取 <strong>${list.length}</strong> 筆有效紀錄（已自動濾除 ${skippedCount} 行標題/雜訊列）。<br>
-    ${testCount > 0 ? `<span style="color:#dc2626; font-weight:700;">⚠️ 系統偵測到其中有 ${testCount} 筆含有「測試/範例」標記，匯入後將特別警示！</span>` : '<span style="color:#16a34a; font-weight:700;">✨ 欄位已智慧對齊，無格式錯位問題。</span>'}
+    ${testCount > 0 ? `<span style="color:#dc2626; font-weight:700;">⚠️ 系統偵測到其中有 ${testCount} 筆含有「測試/範例」標記，匯入後將特別警示！</span>` : '<span style="color:#16a34a; font-weight:700;">✨ 欄位與日期已智慧對齊。</span>'}
   `;
 
   tbody.innerHTML = "";
@@ -1287,8 +1339,8 @@ function showTaskImportPreview(list, skippedCount) {
       <td><strong>${t.subTeacher}</strong></td>
       <td>${t.title}</td>
       <td style="color:#0369a1; font-size:0.75rem;">${t.docNo}</td>
-      <td>${t.dateRange}</td>
-      <td>${t.periodsCount}</td>
+      <td>${t.dateRange} <small style="color:#64748b;">(${t.date})</small></td>
+      <td>第 ${t.period} 節 (${t.periodsCount}節)</td>
       <td><strong>$${t.amount}</strong></td>
       <td>${t.originalTeacher}</td>
       <td style="font-size:0.75rem;">${t.reason}</td>
@@ -1311,10 +1363,18 @@ function confirmTaskCsvImport() {
   appData.tasks = pendingImportTasks;
   saveToLocalStorage();
   closeTaskImportPreview();
+
+  // 自動推算第一筆代課屬於第幾週，並切換週次選單
+  if (appData.tasks.length > 0 && appData.tasks[0].date) {
+    const targetWeek = getWeekNumberByDate(appData.tasks[0].date);
+    const weekSelect = document.getElementById("scheduleWeekSelect");
+    if (weekSelect) weekSelect.value = targetWeek.toString();
+  }
+
   renderTasks();
   renderSchedule();
   renderCurrentReport();
-  alert(`✅ 成功匯入 ${appData.tasks.length} 筆代課清冊！已同步更新課表與月結造冊。`);
+  alert(`✅ 成功匯入 ${appData.tasks.length} 筆代課清冊！\n已自動為您切換至對應週次課表，代課覆蓋已即時生效。`);
 }
 
 function openNewSubModal() {
@@ -1393,7 +1453,13 @@ function saveNewSubTask() {
   appData.tasks.unshift(newTask);
   saveToLocalStorage();
   closeNewSubModal();
-  alert(isTest ? "⚠️ 測試紀錄新增成功！已自動標註【測試】。" : "✅ 新增代課紀錄成功！");
+
+  // 自動切換到該日期對應之週次
+  const targetWeek = getWeekNumberByDate(date);
+  const weekSelect = document.getElementById("scheduleWeekSelect");
+  if (weekSelect) weekSelect.value = targetWeek.toString();
+
+  alert(isTest ? "⚠️ 測試紀錄新增成功！已自動標註【測試】。" : "✅ 新增代課紀錄成功！課表已自動連動。");
   renderAllViews();
 }
 
