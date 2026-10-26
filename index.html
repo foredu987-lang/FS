@@ -182,10 +182,15 @@
 
         <div class="flex flex-wrap items-center gap-2 text-xs">
           <select id="scheduleClassSelect" onchange="changeScheduleClass(this.value)" class="border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 font-bold focus:ring-1 focus:ring-blue-500 cursor-pointer">
-            <option value="901">🏫 901 班課表 (導師：張碧菁)</option>
-            <option value="701">🏫 701 班課表 (導師：阮建安)</option>
-            <option value="801">🏫 801 班課表 (導師：蔡明振)</option>
-            <option value="902">🏫 902 班課表 (導師：林𡶙鋌)</option>
+            <optgroup label="【全校四班全週課表】">
+              <option value="901">🏫 901 班課表 (導師：張碧菁)</option>
+              <option value="701">🏫 701 班課表 (導師：阮建安)</option>
+              <option value="801">🏫 801 班課表 (導師：蔡明振)</option>
+              <option value="902">🏫 902 班課表 (導師：林𡶙鋌)</option>
+            </optgroup>
+            <optgroup label="【教師個人全週排課表】" id="scheduleTeacherOptionsGroup">
+              <!-- 由 JavaScript 自動填充 14 位教師 -->
+            </optgroup>
           </select>
           <button onclick="openModal('modalEditCourse')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1 shadow-sm">
             <span>➕</span> 快速加課/特教抽離
@@ -1195,8 +1200,14 @@
       const input = document.getElementById("cloudGasUrlInput");
       if (!input) return;
       const url = input.value.trim();
+      
+      if (url.includes("docs.google.com/spreadsheets")) {
+        alert("⚠️ 貼錯網址囉！\n\n您貼上的是 Google 試算表的「網頁檢視網址」。\n程式需要的是由 Apps Script 部署所產生的「網路應用程式網址」\n(開頭必須是 https://script.google.com/macros/s/.../exec)。\n\n請參考彈窗底部的 3 步驟教學取得正確網址！");
+        return;
+      }
+
       if (!url.startsWith("https://script.google.com/macros/s/")) {
-        showToast("網址格式不正確，應以 https://script.google.com/ 開頭", "⚠️");
+        showToast("網址格式不正確，應以 https://script.google.com/macros/s/ 開頭", "⚠️");
         return;
       }
       localStorage.setItem(CLOUD_STORAGE_KEY, url);
@@ -1326,28 +1337,147 @@
     // ==========================================
     // 5. 課表動態聚合渲染管線 (模組 1)
     // ==========================================
-    function changeScheduleClass(classId) {
-      if (!classId) classId = "901";
-      appData.currentScheduleClass = classId;
+    function changeScheduleClass(targetId) {
+      if (!targetId) targetId = "901";
+      appData.currentScheduleClass = targetId;
       const select = document.getElementById("scheduleClassSelect");
-      if (select && select.value !== classId) select.value = classId;
-      renderScheduleGrid(classId);
-      showToast(`已切換檢視 ${classId} 班課表`);
+      if (select && select.value !== targetId) select.value = targetId;
+      renderScheduleGrid(targetId);
+      
+      const isTeacher = OFFICIAL_TEACHERS.some(t => t.name === targetId);
+      showToast(isTeacher ? `已切換檢視【${targetId} 老師】個人課表` : `已切換檢視 ${targetId} 班課表`);
     }
 
-    function renderScheduleGrid(classId) {
-      if (!classId) classId = appData.currentScheduleClass || "901";
-      appData.currentScheduleClass = classId;
-      const tutorName = CLASS_TUTOR_MAP[classId] || "導師";
-      
-      const titleEl = document.getElementById("scheduleClassTitle");
-      if (titleEl) {
-        titleEl.textContent = `${classId} 班全週課表 (導師：${tutorName})`;
-      }
+    function renderScheduleGrid(targetId) {
+      if (!targetId) targetId = appData.currentScheduleClass || "901";
+      appData.currentScheduleClass = targetId;
 
+      const titleEl = document.getElementById("scheduleClassTitle");
       const thead = document.getElementById("scheduleTableHead");
       const tbody = document.getElementById("scheduleTableBody");
       if (!thead || !tbody) return;
+
+      const isTeacherView = OFFICIAL_TEACHERS.some(t => t.name === targetId);
+
+      // ==============================================
+      // 模式 A：教師個人專屬全週課表
+      // ==============================================
+      if (isTeacherView) {
+        const teacherName = targetId;
+        const teacherObj = OFFICIAL_TEACHERS.find(t => t.name === teacherName) || {};
+        const tSchedule = MASTER_SCHEDULE_MAP[teacherName] || {};
+
+        if (titleEl) {
+          titleEl.innerHTML = `<span class="text-purple-700">👨‍🏫 ${teacherName} 老師個人課表</span> <small class="text-xs text-slate-500">(${teacherObj.title || '任課'} • ${teacherObj.subject || ''})</small>`;
+        }
+
+        // 表頭
+        let headHtml = `
+          <tr class="bg-purple-900 text-white font-bold">
+            <th class="w-24 py-2">節次 / 時間</th>
+        `;
+        SCHEDULE_WEEK_DAYS.forEach(day => {
+          headHtml += `
+            <th class="w-1/5 py-2">
+              ${day.label} (${day.dateStr})
+            </th>
+          `;
+        });
+        headHtml += `</tr>`;
+        thead.innerHTML = headHtml;
+
+        // 表身
+        let bodyHtml = "";
+
+        // 早自修
+        bodyHtml += `
+          <tr>
+            <td class="bg-slate-50 font-bold text-slate-600">早自修<br><span class="text-[10px] text-slate-400 font-normal">${PERIOD_TIMES[0]}</span></td>
+        `;
+        SCHEDULE_WEEK_DAYS.forEach(day => {
+          const isHomeroomTutorClass = Object.keys(CLASS_TUTOR_MAP).find(cId => CLASS_TUTOR_MAP[cId] === teacherName);
+          const tutorTask = appData.tasks.find(t => t.date === day.rocDate && t.subTeacher === teacherName && (t.tutorFee > 0 || t.period === 0));
+
+          if (tutorTask) {
+            bodyHtml += `
+              <td class="bg-amber-100 border border-amber-400 p-2 text-left">
+                <span class="px-1.5 py-0.5 bg-amber-600 text-white text-[10px] rounded font-bold">代理導師</span>
+                <div class="font-bold text-amber-950 mt-1">${tutorTask.classPeriod}</div>
+                <div class="text-[10px] text-amber-800">原導師：${tutorTask.originalTeacher}</div>
+              </td>
+            `;
+          } else if (isHomeroomTutorClass) {
+            bodyHtml += `
+              <td class="bg-blue-50/60 p-2 text-left">
+                <span class="px-1.5 py-0.5 bg-blue-600 text-white text-[10px] rounded font-bold">${isHomeroomTutorClass} 導師時間</span>
+                <div class="text-xs text-slate-700 mt-1">常態常規指導</div>
+              </td>
+            `;
+          } else {
+            bodyHtml += `<td class="text-slate-300">—</td>`;
+          }
+        });
+        bodyHtml += `</tr>`;
+
+        // 1 ~ 8 節
+        for (let p = 1; p <= 8; p++) {
+          bodyHtml += `
+            <tr>
+              <td class="bg-slate-50 font-bold text-slate-600">
+                第 ${p} 節${p === 8 ? '<br><span class="text-[9px] text-amber-700 font-bold bg-amber-100 px-1 py-0.2 rounded">課後輔導</span>' : ''}
+                <br><span class="text-[10px] text-slate-400 font-normal">${PERIOD_TIMES[p]}</span>
+              </td>
+          `;
+
+          SCHEDULE_WEEK_DAYS.forEach(day => {
+            const regularCourse = (tSchedule[day.dayNum] && tSchedule[day.dayNum][p]) || "";
+            const subForOthers = appData.tasks.find(t => t.date === day.rocDate && t.subTeacher === teacherName && t.period === p);
+            const myAbsenceSub = appData.tasks.find(t => t.date === day.rocDate && t.originalTeacher === teacherName && t.period === p);
+
+            if (subForOthers) {
+              bodyHtml += `
+                <td class="p-2 schedule-cell-sub">
+                  <span class="bg-orange-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">代課</span>
+                  <div class="font-bold text-orange-950 text-sm mt-0.5">${subForOthers.classPeriod} (${subForOthers.subject})</div>
+                  <div class="text-[10px] text-slate-600">被代課：${subForOthers.originalTeacher} 老師</div>
+                </td>
+              `;
+            } else if (myAbsenceSub) {
+              bodyHtml += `
+                <td class="p-2 bg-rose-50 border border-rose-300">
+                  <span class="bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">公假受代</span>
+                  <div class="font-bold text-rose-950 text-sm mt-0.5">${regularCourse}</div>
+                  <div class="text-[10px] text-rose-800">由 ${myAbsenceSub.subTeacher} 老師代課</div>
+                </td>
+              `;
+            } else if (regularCourse) {
+              bodyHtml += `
+                <td class="p-2 bg-blue-50/40">
+                  <div class="font-bold text-blue-900 text-sm">${regularCourse}</div>
+                  <div class="text-[10px] text-slate-500">常態授課</div>
+                </td>
+              `;
+            } else {
+              bodyHtml += `<td class="text-slate-300">—</td>`;
+            }
+          });
+
+          bodyHtml += `</tr>`;
+        }
+
+        tbody.innerHTML = bodyHtml;
+        return;
+      }
+
+      // ==============================================
+      // 模式 B：班級全週課表
+      // ==============================================
+      const classId = targetId;
+      const tutorName = CLASS_TUTOR_MAP[classId] || "導師";
+      
+      if (titleEl) {
+        titleEl.textContent = `${classId} 班全週課表 (導師：${tutorName})`;
+      }
 
       // 1. 渲染表頭 (帶代導氣泡標註)
       let headHtml = `
@@ -1930,13 +2060,15 @@
       else if (courseText.includes("生活科技")) subject = "生活科技";
 
       const subObj = OFFICIAL_TEACHERS.find(t => t.name === subTeacher) || {};
-      const isOrigTutor = (origTeacher === "蔡明振" || origTeacher === "阮建安" || origTeacher === "張碧菁" || origTeacher === "林𡶙鋌");
-      const isSubQualified = !!subObj.isSubTutorQualified;
 
+      // 代導費計算：勾選即算，並加入同日上限檢查
       let tutorFee = 0;
-      if (isFullDayTutorChecked && isOrigTutor && isSubQualified) {
+      if (isFullDayTutorChecked) {
         const capCheck = checkClassDailyTutorFeeExceeded(classId, rocDate);
-        if (!capCheck.exceeded) {
+        if (capCheck.exceeded) {
+          showToast(`⚠️ 注意：${classId} 班於 ${rocDate} 當日已請領過代導費，依法單日單班不可重複請領，此筆代導費設為 $0`, "⚠️");
+          tutorFee = 0;
+        } else {
           const calc = calculateDailyTutorFee(rocDate);
           tutorFee = calc.total;
         }
@@ -1974,7 +2106,7 @@
       renderTasksTable();
       renderReportTable();
 
-      showToast(`✅ 即時排代成功！已指派 ${subTeacher} 老師代授 ${classId} 第${period}節 ${subject} (原授課：${origTeacher})`);
+      showToast(`✅ 排代成功！${subTeacher} 老師代授 ${classId} 第${period}節 ${subject} (應領: $${amount} 元)`);
     }
 
     function cancelRadarDispatch(taskId) {
@@ -2404,12 +2536,7 @@
       } else if (role === "teacher") {
         const tName = specificUser || "蔡明振";
         appData.currentUser = tName;
-        
-        let defaultClass = "701";
-        Object.entries(CLASS_TUTOR_MAP).forEach(([cId, name]) => {
-          if (name === tName) defaultClass = cId;
-        });
-        appData.currentScheduleClass = defaultClass;
+        appData.currentScheduleClass = tName; // 教師視角預設檢視自己的課表
 
         const tObj = OFFICIAL_TEACHERS.find(t => t.name === tName);
         const titleStr = tObj ? tObj.title : "教師";
@@ -2432,7 +2559,7 @@
 
         if (classSelect) {
           classSelect.disabled = false;
-          classSelect.value = defaultClass;
+          classSelect.value = tName;
         }
 
         const currentActiveSec = document.querySelector(".tab-content:not(.hidden)");
@@ -2441,9 +2568,9 @@
           switchTab("tabSchedule");
         }
 
-        renderScheduleGrid(defaultClass);
+        renderScheduleGrid(tName);
         renderTasksTable();
-        showToast(`已切換至 ${tName} 老師視角 (受限模組 1~3，僅顯示本人紀錄)`, "👨‍🏫");
+        showToast(`已切換至 ${tName} 老師視角，已載入您的個人課表`, "👨‍🏫");
 
       } else {
         const aName = specificUser || "施銘權";
@@ -2579,7 +2706,18 @@
 
       const parsed = parseRocDate(dateVal);
       const calc = calculateDailyTutorFee(parsed.rocStr);
-      const tutorFee = isTutor ? calc.total : 0;
+      
+      let tutorFee = 0;
+      if (isTutor) {
+        const capCheck = checkClassDailyTutorFeeExceeded(classId, parsed.rocStr);
+        if (capCheck.exceeded) {
+          showToast(`⚠️ ${classId} 班於 ${parsed.rocStr} 已申報過代導費，此筆代導費設為 $0`, "⚠️");
+          tutorFee = 0;
+        } else {
+          tutorFee = calc.total;
+        }
+      }
+
       const periodsCount = period === 0 ? 0 : 1;
       const amount = (periodsCount * rate) + tutorFee;
 
@@ -2685,12 +2823,91 @@
           showToast("上傳檔案為空", "⚠️");
           return;
         }
-        const headers = lines[0].split(",");
-        if (headers.length !== 13) {
+        
+        const cleanLine = (l) => l.replace(/^\uFEFF/, "").trim();
+        const headerCols = cleanLine(lines[0]).split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
+        
+        if (headerCols.length !== 13) {
           openModal("modalCsvDiagnostic");
           return;
         }
-        showToast(`已成功讀取 ${lines.length - 1} 筆排代資料並自動合併！`);
+
+        let importedCount = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const rawRow = cleanLine(lines[i]);
+          if (!rawRow) continue;
+          const cols = rawRow.split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
+          if (cols.length < 13) continue;
+
+          const subTeacher = cols[0];
+          const title = cols[1];
+          const docNo = cols[2];
+          const date = cols[3];
+          const dayOfWeek = cols[4];
+          const classPeriod = cols[5];
+          const periodsCount = parseInt(cols[6], 10) || 0;
+          const rate = parseInt(cols[7], 10) || 455;
+          const tutorFee = parseInt(cols[8], 10) || 0;
+          const amount = parseInt(cols[9], 10) || ((periodsCount * rate) + tutorFee);
+          const originalTeacher = cols[10];
+          const reason = cols[11];
+          const note = cols[12];
+
+          let classId = "801";
+          let period = 1;
+          const matchClass = classPeriod.match(/(701|801|901|902)/);
+          if (matchClass) classId = matchClass[1];
+          const matchPeriod = classPeriod.match(/第\s*(\d+)\s*節/);
+          if (matchPeriod) {
+            period = parseInt(matchPeriod[1], 10);
+          } else if (classPeriod.includes("全日代導") || periodsCount === 0) {
+            period = 0;
+          }
+
+          const taskObj = {
+            id: `TASK_CSV_${date}_${classId}_${period}_${Date.now().toString().slice(-4)}_${i}`,
+            subTeacher: subTeacher,
+            title: title || "教師",
+            docNo: docNo,
+            date: date,
+            dayOfWeek: dayOfWeek,
+            classPeriod: classPeriod,
+            classId: classId,
+            period: period,
+            subject: note && note.includes("家政") ? "家政" : (classPeriod.includes("代導") ? "代理導師業務" : "課堂授課"),
+            courseType: period === 8 ? "afterSchool" : "regular",
+            periodsCount: periodsCount,
+            rate: rate,
+            tutorFee: tutorFee,
+            amount: amount,
+            originalTeacher: originalTeacher,
+            reason: reason,
+            note: note || "—"
+          };
+
+          upsertTask(taskObj);
+          importedCount++;
+        }
+
+        renderTasksTable();
+        renderReportTable();
+        renderScheduleGrid(appData.currentScheduleClass);
+        renderRadarWorkspace();
+
+        // 若有綁定 Apps Script 網址，整批推播至 Google 試算表
+        if (getCloudGasUrl()) {
+          pushToCloud({
+            action: "syncAll",
+            tasks: appData.tasks,
+            swaps: appData.swaps
+          }, false);
+          showToast(`✅ 成功匯入 ${importedCount} 筆排代資料，並已同步推播至 Google 試算表！`);
+        } else {
+          showToast(`✅ 成功匯入 ${importedCount} 筆資料！(提醒：尚未設定試算表同步網址)`, "ℹ️");
+        }
+
+        e.target.value = "";
       };
       reader.readAsText(file);
     }
@@ -2704,6 +2921,19 @@
       const gasInput = document.getElementById("cloudGasUrlInput");
       if (gasInput && savedGasUrl) {
         gasInput.value = savedGasUrl;
+      }
+
+      // 0.5 填充課表下拉選單的「教師個人課表」選項
+      const teacherOptsGroup = document.getElementById("scheduleTeacherOptionsGroup");
+      if (teacherOptsGroup) {
+        teacherOptsGroup.innerHTML = "";
+        OFFICIAL_TEACHERS.forEach(t => {
+          if (t.name === "管理人") return;
+          const opt = document.createElement("option");
+          opt.value = t.name;
+          opt.textContent = `👨‍🏫 ${t.name} 個人課表 (${t.title} - ${t.subject})`;
+          teacherOptsGroup.appendChild(opt);
+        });
       }
 
       // 1. 初始化雷達作業台請假教師清單
