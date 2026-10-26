@@ -3,431 +3,654 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>雲林縣立飛沙國民中學 115-1學期 課務、排代、調課與月結造冊整合管理系統</title>
-  <link rel="stylesheet" href="css/style.css">
+  <title>雲林縣立飛沙國民中學 115-1 課務管理與排代整合系統</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* 仿 Excel 課表格子樣式 */
+    .excel-table th, .excel-table td {
+      border: 1px solid #cbd5e1;
+      text-align: center;
+      vertical-align: middle;
+      padding: 6px 4px;
+    }
+    .schedule-cell-sub {
+      background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+      border: 1.5px solid #f97316 !important;
+      box-shadow: 0 1px 3px rgba(249, 115, 22, 0.15);
+    }
+    .schedule-cell-swap {
+      background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+      border: 1.5px solid #a855f7 !important;
+    }
+    /* Modal 基礎動畫與層級 */
+    .modal-overlay {
+      background-color: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(4px);
+      transition: opacity 0.2s ease-in-out;
+    }
+    /* 自定義滾動條 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 4px;
+    }
+  </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
 
-  <!-- ==================== 全螢幕安全登入閘門 ==================== -->
-  <div class="login-overlay" id="loginOverlay">
-    <div class="login-card">
-      <div class="login-brand">🏫 雲林縣立飛沙國民中學</div>
-      <div class="login-sub">115-1 課務、排代與月結整合系統登入</div>
-
-      <div class="login-field">
-        <label for="loginUserSelect">選擇登入教職員：</label>
-        <select id="loginUserSelect" class="form-control" style="width:100%; font-weight:700;"></select>
-      </div>
-
-      <div class="login-field">
-        <label for="loginPasswordInput">請輸入個人登入密碼：</label>
-        <div style="position: relative; display: flex; align-items: center;">
-          <input type="password" id="loginPasswordInput" class="form-control" style="width:100%; padding-right: 2.5rem;" placeholder="請輸入密碼" onkeydown="if(event.key==='Enter') submitLogin()">
-          <button type="button" id="btnToggleLoginPwd" onclick="toggleLoginPasswordVisibility()" style="position: absolute; right: 8px; background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 2px;" title="目前為隱藏 (*號)，點擊顯示為明文">
-            🙈
-          </button>
+  <!-- ==================== 頂部全域公告與導覽列 ==================== -->
+  <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
+      <div class="flex items-center space-x-3">
+        <span class="text-2xl">🏫</span>
+        <div>
+          <h1 class="text-lg md:text-xl font-bold tracking-wide text-blue-300">
+            雲林縣立飛沙國民中學 <span class="text-white text-sm md:text-base font-normal">| 115-1 課務管理與排代整合系統</span>
+          </h1>
+          <p class="text-xs text-slate-400">標準 13 欄公課排代 • 浮動代導費勾稽 • Excel 視覺化全校排代表</p>
         </div>
       </div>
 
-      <div id="loginErrorMsg" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700; margin-bottom:1rem; text-align:left;">
-        密碼錯誤，請重新輸入！
-      </div>
+      <!-- 身分切換 -->
+      <div class="flex items-center gap-2">
+        <div class="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-2">
+          <span class="text-xs text-slate-400">當前身分：</span>
+          <span id="headerRoleBadge" class="px-2 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            🛡️ 施銘權 [教務組長]
+          </span>
+        </div>
 
-      <button class="btn btn-primary" style="width:100%; justify-content:center; padding:0.6rem; font-size:1rem;" onclick="submitLogin()">
-        🔑 登入系統
+        <select id="roleSwitcher" onchange="handleRoleSwitcherChange(this.value)" class="bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer font-bold">
+          <optgroup label="【最高行政管理】">
+            <option value="admin:施銘權">🛡️ 施銘權 (教務組長 / 全功能)</option>
+            <option value="admin:管理人">🛡️ 系統管理人 (全功能)</option>
+          </optgroup>
+          <optgroup label="【各班導師 (受限個人視角)】">
+            <option value="teacher:阮建安">👨‍🏫 阮建安 (701導師 - 國文)</option>
+            <option value="teacher:蔡明振">👨‍🏫 蔡明振 (801導師 - 國文)</option>
+            <option value="teacher:張碧菁">👨‍🏫 張碧菁 (901導師 - 數學)</option>
+            <option value="teacher:林𡶙鋌">👨‍🏫 林𡶙鋌 (902導師 - 自然)</option>
+          </optgroup>
+          <optgroup label="【行政與專任 (受限個人視角)】">
+            <option value="teacher:陳文鈴">👨‍🏫 陳文鈴 (體衛組長/專任代導)</option>
+            <option value="teacher:吳靜瑜">👨‍🏫 吳靜瑜 (專任英語/代導)</option>
+            <option value="teacher:蔡麗昭">👨‍🏫 蔡麗昭 (教導主任)</option>
+          </optgroup>
+          <optgroup label="【教室電視端 (硬鎖純淨課表)】">
+            <option value="class:701">📺 701 班教室電視端</option>
+            <option value="class:801">📺 801 班教室電視端</option>
+            <option value="class:901">📺 901 班教室電視端</option>
+            <option value="class:902">📺 902 班教室電視端</option>
+          </optgroup>
+        </select>
+
+        <!-- 雲端試算表連線狀態按鈕 -->
+        <button onclick="openModal('modalCloudSync')" id="btnCloudSyncStatus" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 shadow" title="設定 Google 試算表同步">
+          <span id="cloudSyncDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="cloudSyncText">雲端未連線</span>
+        </button>
+
+        <button onclick="openModal('modalLogin')" class="bg-blue-600 hover:bg-blue-500 text-xs text-white px-3 py-1.5 rounded-lg font-medium transition shadow flex items-center gap-1">
+          <span>🔑</span> 登入/帳號
+        </button>
+      </div>
+    </div>
+
+    <!-- 系統核心認證面板 (僅保留登入認證，教室端自動隱藏) -->
+    <div id="reviewPanel" class="bg-blue-950/80 border-b border-blue-800/60 px-4 py-1.5">
+      <div class="max-w-7xl mx-auto flex items-center justify-between text-xs">
+        <span class="text-blue-300 font-semibold flex items-center gap-1.5">
+          <span>🛠️</span> 系統通道：
+        </span>
+        <button onclick="openModal('modalLogin')" class="px-2.5 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold transition flex items-center gap-1">
+          <span>🔑</span> 1. 登入認證 (萬用碼/教室免密)
+        </button>
+      </div>
+    </div>
+
+    <!-- 主導覽分頁按鈕 (教室端自動硬鎖並隱藏其他分頁) -->
+    <nav class="max-w-7xl mx-auto px-4 flex gap-1 overflow-x-auto text-sm pt-1">
+      <button onclick="switchTab('tabSchedule')" id="navSchedule" class="tab-btn px-4 py-2 font-bold border-b-2 border-blue-400 text-white flex items-center gap-1.5 transition">
+        <span>📅</span> 模組 1：動態課表網格
       </button>
+      <button onclick="switchTab('tabTasks')" id="navTasks" class="tab-btn px-4 py-2 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-1.5 transition">
+        <span>📑</span> 模組 2：標準 13 欄代課清冊
+      </button>
+      <button onclick="switchTab('tabWorkflow')" id="navWorkflow" class="tab-btn px-4 py-2 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-1.5 transition">
+        <span>🔄</span> 模組 3：同仁自辦調代課工作流
+      </button>
+      <button onclick="switchTab('tabRadar')" id="navRadar" class="tab-btn px-4 py-2 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-1.5 transition">
+        <span>🧭</span> 模組 4：排代作業台 (Excel 矩陣)
+      </button>
+      <button onclick="switchTab('tabReports')" id="navReports" class="tab-btn px-4 py-2 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-1.5 transition">
+        <span>🖨️</span> 模組 5：月結公文核銷中心
+      </button>
+      <button onclick="switchTab('tabRoster')" id="navRoster" class="tab-btn px-4 py-2 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-1.5 transition">
+        <span>👥</span> 模組 6：名冊與權限管理
+      </button>
+    </nav>
+  </header>
 
-      <hr style="margin: 1.5rem 0; border: none; border-top: 1px dashed #cbd5e1;">
-
-      <div style="font-size:0.8rem; font-weight:700; color:#64748b; text-align:left; margin-bottom:0.4rem;">
-        📺 班級教室快速通道 (免輸入密碼直接查看班級課表)：
+  <!-- ==================== 教室端隔離提示橫幅 ==================== -->
+  <div id="classroomBanner" class="hidden bg-emerald-600 text-white px-4 py-2 shadow-md">
+    <div class="max-w-7xl mx-auto flex items-center justify-between text-xs md:text-sm font-medium">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">📺</span>
+        <span><strong>【教室電視專用視角】</strong> 系統已啟動權限邊界：已隱藏所有行政、調課審核與代課清冊模組，僅提供純淨課表輪播。</span>
       </div>
-      <div class="kiosk-grid">
-        <button class="btn btn-secondary btn-sm" onclick="quickClassLogin('701')">📺 701 教室端</button>
-        <button class="btn btn-secondary btn-sm" onclick="quickClassLogin('801')">📺 801 教室端</button>
-        <button class="btn btn-secondary btn-sm" onclick="quickClassLogin('901')">📺 901 教室端</button>
-        <button class="btn btn-secondary btn-sm" onclick="quickClassLogin('902')">📺 902 教室端</button>
-      </div>
+      <button onclick="switchRole('admin')" class="bg-emerald-800 hover:bg-emerald-900 px-3 py-1 rounded text-xs transition">
+        切換回管理者
+      </button>
     </div>
   </div>
 
-  <!-- 頂部身分導覽 -->
-  <header class="app-header">
-    <div class="header-container">
-      <div>
-        <div class="brand-title">
-          <span>🏫 雲林縣立飛沙國民中學</span>
-          <span class="brand-badge">115-1 學期</span>
+  <!-- ==================== 主要工作區 (6 大模組) ==================== -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+
+    <!-- ========== 模組 1：動態課表網格 (去金額化，學生端無金錢標註) ========== -->
+    <section id="tabSchedule" class="tab-content block space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span>📅</span> 班級課表檢視：
+            <span id="scheduleClassTitle" class="text-blue-700 font-extrabold">901 班全週課表</span>
+          </h2>
+          <span class="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">
+            第 6 週 (10/05 ~ 10/09)
+          </span>
         </div>
-        <div class="brand-sub">課務、排代、調課與月結造冊整合管理系統</div>
-      </div>
 
-      <div class="user-status-area">
-        <span id="currentUserRoleBadge" class="role-badge badge-admin">
-          🛡️ 最高管理權限
-        </span>
-        <span id="currentUserNameDisplay" style="font-weight:700; font-size:0.9rem;">
-          施銘權 [教務組長]
-        </span>
-        <button class="btn btn-secondary btn-sm" id="btnHeaderChangePwd" onclick="openChangePasswordModal()" style="font-size:0.75rem; padding:2px 6px;">
-          🔑 修改密碼
-        </button>
-        <button class="btn btn-danger btn-sm" onclick="handleLogout()" style="font-size:0.75rem; padding:2px 6px;">
-          🚪 登出
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- 功能模組切換導覽列 -->
-  <nav class="nav-tabs" id="appNavbar">
-    <div class="nav-container">
-      <button class="nav-btn active" id="navBtnSchedule" onclick="switchTab('tabSchedule')">
-        <span>📅</span> 模組 1：動態課表網格
-      </button>
-      <button class="nav-btn" id="navBtnTasks" onclick="switchTab('tabTasks')">
-        <span>📋</span> 模組 2：代課任務清單
-      </button>
-      <button class="nav-btn" id="navBtnWorkflow" onclick="switchTab('tabWorkflow')">
-        <span>🔄</span> 模組 3：同仁自辦調代課工作流
-      </button>
-      <button class="nav-btn" id="navBtnRadar" onclick="switchTab('tabRadar')">
-        <span>🎯</span> 模組 4：智慧排代作業台
-      </button>
-      <button class="nav-btn" id="navBtnReports" onclick="switchTab('tabReports')">
-        <span>📑</span> 模組 5：月結造冊中心
-      </button>
-      <button class="nav-btn" id="navBtnSettings" onclick="switchTab('tabSettings')">
-        <span>⚙️</span> 模組 6：學期初操作專區
-      </button>
-    </div>
-  </nav>
-
-  <!-- 主內容容器 -->
-  <main class="main-container">
-
-    <!-- 模組 1: 課表網格 -->
-    <section id="tabSchedule" class="tab-content active">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <span>📅</span> <span id="scheduleViewTitle">動態課表網格檢視</span>
-            <span id="scheduleCountBadge" style="font-size:0.8rem; font-weight:normal; color:#64748b;"></span>
-          </div>
-          <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            <div id="scheduleFilterGroup" style="display: flex; gap: 0.5rem; align-items: center;">
-              <label for="scheduleViewModeSelect" style="font-weight:600; font-size:0.85rem;">檢視模式：</label>
-              <select id="scheduleViewModeSelect" class="form-control" onchange="changeScheduleViewMode(this.value)">
-              </select>
-              <select id="scheduleTargetSelect" class="form-control" style="display:none;" onchange="renderSchedule()">
-              </select>
-              <label style="font-weight:600; font-size:0.85rem; margin-left:0.4rem;">週期週次：</label>
-              <select id="scheduleWeekSelect" class="form-control" onchange="renderSchedule()">
-              </select>
-            </div>
-            
-            <button class="btn btn-primary btn-sm" id="btnToggleEditMode" onclick="toggleScheduleEditMode()" style="display:none;">
-              ➕ 啟動加課/修改模式
-            </button>
-            <button class="btn btn-excel btn-sm" id="btnExportCsv" onclick="exportScheduleToCSV()">
-              📥 匯出 schedule.csv
-            </button>
-            <button class="btn btn-warning btn-sm" id="btnResetDefault" onclick="resetToOfficialSchedule()">
-              🔄 還原 178 節基準底冊
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="window.print()">
-              🖨️ 列印課表
-            </button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div id="adminEditHintBar" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:0.5rem 0.75rem; border-radius:0.375rem; font-size:0.85rem; margin-bottom:0.75rem;">
-            💡 <strong>管理員編輯模式已啟用：</strong>點擊任一課堂可【修改/刪除】；點擊空白堂【—】或【➕ 加抽離/並行課】可直接新增特教或重疊課堂。更正後點擊上方「📥 匯出 schedule.csv」存入 <code>data/</code> 覆蓋！
-          </div>
-          <div id="scheduleContainer" class="table-responsive"></div>
-          
-          <div class="no-print" style="margin-top: 1rem; display: flex; gap: 1rem; font-size: 0.8rem; color: #64748b; flex-wrap: wrap;">
-            <div style="display:flex; align-items:center; gap:0.25rem;">
-              <span style="display:inline-block; width:14px; height:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:2px;"></span>
-              <span>一般基準課</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:0.25rem;">
-              <span style="display:inline-block; width:14px; height:14px; background:#fef3c7; border:1px solid #fde68a; border-radius:2px;"></span>
-              <span>兼課 / 超鐘點</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:0.25rem;">
-              <span style="display:inline-block; width:14px; height:14px; background:#f3e8ff; border:1px solid #d8b4fe; border-radius:2px;"></span>
-              <span>第 8 節課後輔導</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:0.25rem;">
-              <span style="display:inline-block; width:14px; height:14px; background:#ecfdf5; border:1.5px solid #10b981; border-radius:2px;"></span>
-              <span>特教資源班抽離／外加 (左右並排)</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:0.25rem;">
-              <span style="display:inline-block; width:14px; height:14px; background:#ffedd5; border:2px solid #f97316; border-radius:2px;"></span>
-              <span>經核准之代課安排</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 模組 2: 代課任務清單 (法定11欄標準順序、下載空白範本、一鍵清空防呆) -->
-    <section id="tabTasks" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <span>📋</span> <span id="taskViewTitle">公課排代任務與受代明細 (全校總冊)</span>
-          </div>
-          <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            <span id="taskScopeNotice" style="font-size:0.85rem; color:#64748b;"></span>
-            
-            <button class="btn btn-secondary btn-sm" onclick="downloadTaskCsvTemplate()" title="下載標準空白 11 欄 CSV 格式">
-              📥 下載空白清冊範本 (CSV)
-            </button>
-            <input type="file" id="taskCsvFileInput" accept=".csv" style="display:none;" onchange="handleTaskCsvUpload(event)">
-            <button class="btn btn-excel btn-sm" id="btnUploadTaskCsv" onclick="triggerTaskCsvUpload()">
-              📁 上傳代課清冊 (CSV)
-            </button>
-            <button class="btn btn-danger btn-sm" id="btnClearAllTasks" onclick="openClearTasksModal()" title="清空全部代課紀錄（需輸入防護密碼）">
-              🗑️ 一鍵清空清冊
-            </button>
-            <button class="btn btn-primary btn-sm" id="btnOpenNewSubModal" onclick="openNewSubModal()">
-              ➕ 新增排代記錄
-            </button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="custom-table" style="font-size:0.85rem;">
-              <thead>
-                <tr>
-                  <th>代課人姓名</th>
-                  <th>職稱</th>
-                  <th>核准文號</th>
-                  <th>代課起訖日期</th>
-                  <th>代課節數</th>
-                  <th>每節鐘點費</th>
-                  <th>代理導師費</th>
-                  <th>應領金額</th>
-                  <th>被代課教師</th>
-                  <th>代課事由</th>
-                  <th>備註(班級 節 代導費用)</th>
-                  <th>狀態</th>
-                  <th class="no-print" style="width: 70px;">操作</th>
-                </tr>
-              </thead>
-              <tbody id="taskTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 模組 3: 自辦調代課工作流 -->
-    <section id="tabWorkflow" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span>🔄</span> 同仁自辦調課與代課工作流 (三方即時線上簽核)</div>
-          <button class="btn btn-primary btn-sm no-print" onclick="openNewSwapModal()">
-            ➕ 發起自辦調代課申請
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <select id="scheduleClassSelect" onchange="changeScheduleClass(this.value)" class="border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 font-bold focus:ring-1 focus:ring-blue-500 cursor-pointer">
+            <option value="901">🏫 901 班課表 (導師：張碧菁)</option>
+            <option value="701">🏫 701 班課表 (導師：阮建安)</option>
+            <option value="801">🏫 801 班課表 (導師：蔡明振)</option>
+            <option value="902">🏫 902 班課表 (導師：林𡶙鋌)</option>
+          </select>
+          <button onclick="openModal('modalEditCourse')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1 shadow-sm">
+            <span>➕</span> 快速加課/特教抽離
           </button>
         </div>
-        <div class="card-body">
-          <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: #1e40af;">
-            💡 <strong>標準自辦調課流程：</strong>
-            申請教師發起申請 ➔ 受調/代課同仁確認同意 ➔ 教學組長核准生效 ➔ 課表自動即時連動更新。
+      </div>
+
+      <!-- 課表格子本體 (動態聚合渲染) -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table id="scheduleTable" class="excel-table w-full min-w-[760px] text-xs">
+          <thead id="scheduleTableHead"></thead>
+          <tbody id="scheduleTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== 模組 2：標準 13 欄代課清冊 ========== -->
+    <section id="tabTasks" class="tab-content hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="tasksViewTitle" class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span>📑</span> 標準 13 欄公課排代與代導總冊
+          </h2>
+          <p id="tasksViewSubtitle" class="text-xs text-slate-500 mt-0.5">每列最多 1 堂 (0或1節) • 民國 7 碼純數字 (1151006) • 權威姓名唯一鍵：林𡶙鋌 • 銷假即時同步還原課表</p>
+        </div>
+
+        <!-- 管理員功能按鈕列 -->
+        <div id="tasksAdminButtons" class="flex flex-wrap items-center gap-2 text-xs">
+          <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleRealCsvUpload(event)">
+          <button onclick="document.getElementById('csvFileInput').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1 shadow-sm">
+            <span>📥</span> 上傳標準 13 欄清冊 (CSV)
+          </button>
+          <button onclick="simulateLegacyCsvUpload()" class="bg-rose-100 text-rose-800 border border-rose-300 hover:bg-rose-200 px-3 py-1.5 rounded transition font-medium">
+            ⚠️ 模擬上傳舊版 11 欄 (退件展示)
+          </button>
+          <button onclick="triggerConflictWizardDemo()" class="bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 px-3 py-1.5 rounded transition font-medium">
+            🟡 模擬衝突檢核精靈 (動態對照)
+          </button>
+          <button onclick="openModal('modalSubCalculator')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded transition font-medium">
+            ➕ 手動新增 1 筆排代
+          </button>
+        </div>
+
+        <!-- 一般教師受限權限提示 -->
+        <div id="tasksTeacherBadge" class="hidden">
+          <span class="px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm">
+            <span>🔒</span> 個人隱私保護模式：僅可檢視與本人相關之代課紀錄
+          </span>
+        </div>
+      </div>
+
+      <!-- 13 欄表格 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-bold border-b border-slate-200">
+            <tr>
+              <th class="p-2.5">1.代課人</th>
+              <th class="p-2.5">2.職稱</th>
+              <th class="p-2.5">3.核准文號</th>
+              <th class="p-2.5">4.日期(7碼)</th>
+              <th class="p-2.5">5.星期</th>
+              <th class="p-2.5">6.班級/堂</th>
+              <th class="p-2.5 text-center">7.節數</th>
+              <th class="p-2.5 text-right">8.鐘點費</th>
+              <th class="p-2.5 text-right">9.代導費</th>
+              <th class="p-2.5 text-right">10.應領金額</th>
+              <th class="p-2.5">11.被代教師</th>
+              <th class="p-2.5">12.請假事由</th>
+              <th class="p-2.5">13.獨立備註</th>
+              <th class="p-2.5 text-center">操作</th>
+            </tr>
+          </thead>
+          <tbody id="tasksTableBody" class="divide-y divide-slate-200 font-mono-code text-[11px]"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== 模組 3：同仁自辦調代課工作流 ========== -->
+    <section id="tabWorkflow" class="tab-content hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span>🔄</span> 同仁自辦調代課線上簽核工作流
+          </h2>
+          <p class="text-xs text-slate-500">免跑紙本 • 雙方線上同意 ➔ 教務組長最終核准 ➔ 自動連動課表 (支援組長事後撤銷還原)</p>
+        </div>
+        <button onclick="openModal('modalPeerSwap')" class="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3.5 py-2 rounded-lg font-bold shadow transition flex items-center gap-1.5">
+          <span>➕</span> 發起自辦調代課申請
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="workflowCardsContainer"></div>
+    </section>
+
+    <!-- ========== 模組 4：智慧排代作業台 (全新 Excel 矩陣直覺版) ========== -->
+    <section id="tabRadar" class="tab-content hidden space-y-4">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span>🧭</span> 智慧排代作業台 (全校 Excel 課表排代矩陣)
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              參照官方總課表規格：全校教師當日 0~8 節排課一覽無遺 • 支援連鎖請假斷鏈自動偵測 • 點選空白處直接排代
+            </p>
           </div>
-          <div class="table-responsive">
-            <table class="custom-table">
-              <thead>
-                <tr>
-                  <th>單號</th>
-                  <th>申請教師 (A)</th>
-                  <th>受調 / 代課教師 (B)</th>
-                  <th>原課堂</th>
-                  <th>互調課堂</th>
-                  <th>申請日期</th>
-                  <th>雙方協議進度</th>
-                  <th>組長最終審核</th>
-                  <th class="no-print">操作動作</th>
-                </tr>
-              </thead>
-              <tbody id="workflowTableBody"></tbody>
-            </table>
+          <div class="flex items-center gap-2">
+            <div class="bg-slate-100 p-1 rounded-lg flex text-xs font-bold">
+              <button onclick="setRadarViewMode('matrix')" id="btnRadarViewMatrix" class="px-3 py-1 rounded bg-white text-blue-700 shadow-sm transition">
+                👨‍🏫 視角 1：全校教師排代表 (空格點選直排)
+              </button>
+              <button onclick="setRadarViewMode('classes')" id="btnRadarViewClasses" class="px-3 py-1 rounded text-slate-600 hover:text-slate-900 transition">
+                🏫 視角 2：全校四班今日課表 (701~902)
+              </button>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold">
+              🛡️ 兼代課法定上限 9 節保護
+            </span>
           </div>
+        </div>
+
+        <!-- 條件設定控制列 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">📅 請假日期：</label>
+            <input type="date" id="radarDateInput" value="2026-10-06" onchange="onRadarDateOrTeacherChange()" class="w-full border border-slate-300 rounded-lg p-2 font-mono-code font-bold text-slate-800 focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">👨‍🏫 請假教師 (被代課)：</label>
+            <select id="radarAbsentTeacherSelect" onchange="onRadarDateOrTeacherChange()" class="w-full border border-slate-300 rounded-lg p-2 font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 cursor-pointer"></select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">📑 公文核准文號：</label>
+            <input type="text" id="radarDocNoInput" value="115年9月2日府教課二字第1152442203號" class="w-full border border-slate-300 rounded-lg p-2 text-slate-700">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">📝 請假/代課事由：</label>
+            <input type="text" id="radarReasonInput" value="出席全縣國語文領域增能研習" class="w-full border border-slate-300 rounded-lg p-2 text-slate-700">
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+          <label class="flex items-center gap-2 cursor-pointer font-bold text-amber-900 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+            <input type="checkbox" id="radarIsFullDayTutor" checked onchange="onRadarDateOrTeacherChange()" class="text-amber-600 focus:ring-amber-500 rounded">
+            <span>兼任全日代理導師 (若請假者為導師，自動拆算當月代導費日額)</span>
+          </label>
+          <div id="radarTutorAllowanceHint" class="text-amber-700 font-medium"></div>
+        </div>
+
+        <!-- 今日已登記請假教師快捷切換標籤 -->
+        <div id="radarAbsentTeachersBar" class="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
+          <span class="text-slate-500 font-bold">📋 今日請假同仁快捷切換：</span>
+          <div id="radarAbsentTagsList" class="flex flex-wrap gap-1.5"></div>
+        </div>
+      </div>
+
+      <!-- Excel 矩陣容器 -->
+      <div id="radarMainContainer" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3"></div>
+    </section>
+
+    <!-- ========== 模組 5：月結公文核銷中心 ========== -->
+    <section id="tabReports" class="tab-content hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span>🖨️</span> 月結公文核銷中心 (會計科目分流與自費排除)
+          </h2>
+          <p class="text-xs text-slate-500">標準公文字號 • 區隔第8節課後輔導 • 自費($0)自動排除不虛增總額</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="bg-slate-100 p-1 rounded-lg flex text-xs">
+            <button onclick="setReportFilter('all')" id="rfAll" class="px-2.5 py-1 rounded font-bold bg-white text-blue-700 shadow-sm">全部清單</button>
+            <button onclick="setReportFilter('regular')" id="rfReg" class="px-2.5 py-1 rounded font-medium text-slate-600 hover:text-slate-900">僅正課公差 (1~7節)</button>
+            <button onclick="setReportFilter('afterSchool')" id="rfAfter" class="px-2.5 py-1 rounded font-medium text-slate-600 hover:text-slate-900">僅第8節課輔</button>
+          </div>
+          <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-1.5 rounded transition flex items-center gap-1 font-medium">
+            <span>🖨️</span> 列印公文冊
+          </button>
+        </div>
+      </div>
+
+      <!-- 正式公文印製預覽卡片 -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-300 space-y-4 text-xs">
+        <div class="text-center space-y-1">
+          <h3 class="text-base font-extrabold text-slate-900 tracking-wider">雲林縣立飛沙國民中學</h3>
+          <h4 id="reportSubTitle" class="text-sm font-bold text-slate-800">115 學年度第 1 學期 公課排代鐘點費核銷總冊 (含公差派代與代導費)</h4>
+        </div>
+
+        <table class="w-full border-collapse border border-slate-800 text-[11px]">
+          <thead>
+            <tr class="bg-slate-100 text-slate-900 font-bold border-b border-slate-800 text-center">
+              <th class="border border-slate-800 p-1.5">代課人</th>
+              <th class="border border-slate-800 p-1.5">職稱</th>
+              <th class="border border-slate-800 p-1.5 text-left">核准文號</th>
+              <th class="border border-slate-800 p-1.5">代課日期</th>
+              <th class="border border-slate-800 p-1.5">節數</th>
+              <th class="border border-slate-800 p-1.5">單價</th>
+              <th class="border border-slate-800 p-1.5">代理導師費</th>
+              <th class="border border-slate-800 p-1.5 text-right">應領金額</th>
+              <th class="border border-slate-800 p-1.5">被代教師</th>
+              <th class="border border-slate-800 p-1.5 text-left">請假事由</th>
+              <th class="border border-slate-800 p-1.5 text-left">備註 (班級/堂)</th>
+            </tr>
+          </thead>
+          <tbody id="reportTableBody"></tbody>
+        </table>
+
+        <!-- 大寫國字總計列 -->
+        <div class="text-right text-xs font-bold text-slate-800 pt-1">
+          核銷總金額：新臺幣 <span id="reportChineseTotal" class="text-rose-700 text-sm font-extrabold underline underline-offset-4">零元整</span>
+        </div>
+
+        <!-- 六格核章欄位 (標準公文規格) -->
+        <div class="pt-4">
+          <table class="w-full border-collapse border border-slate-800 text-center text-xs">
+            <thead>
+              <tr class="bg-slate-100 font-bold border-b border-slate-800">
+                <th class="border border-slate-800 p-1.5 w-1/6">製表</th>
+                <th class="border border-slate-800 p-1.5 w-1/6">教導主任</th>
+                <th class="border border-slate-800 p-1.5 w-1/6">出納組長</th>
+                <th class="border border-slate-800 p-1.5 w-1/6">人事主任</th>
+                <th class="border border-slate-800 p-1.5 w-1/6">主計主任</th>
+                <th class="border border-slate-800 p-1.5 w-1/6">校長</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="h-16 text-slate-400">
+                <td class="border border-slate-800 p-2 align-bottom"><span class="text-[10px]">施銘權 (印)</span></td>
+                <td class="border border-slate-800 p-2 align-bottom"><span class="text-[10px]">(簽章)</span></td>
+                <td class="border border-slate-800 p-2 align-bottom"><span class="text-[10px]">(簽章)</span></td>
+                <td class="border border-slate-800 p-2 align-bottom"><span class="text-[10px]">(簽章)</span></td>
+                <td class="border border-slate-800 p-2 align-bottom"><span class="text-[10px]">(簽章)</span></td>
+                <td class="border border-slate-800 p-2 align-bottom"><span class="text-[10px]">(簽章)</span></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
 
-    <!-- 模組 4: 智慧排代作業台 -->
-    <section id="tabRadar" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span>🎯</span> 智慧排代雷達作業台 (教務防衝堂與最佳師資推薦)</div>
-        </div>
-        <div class="card-body">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
-            <div>
-              <label style="font-weight: 700; font-size: 0.85rem; display:block; margin-bottom: 0.25rem;">1. 請假原授課教師：</label>
-              <select id="radarTeacherSelect" class="form-control" style="width: 100%;"></select>
-            </div>
-            <div>
-              <label style="font-weight: 700; font-size: 0.85rem; display:block; margin-bottom: 0.25rem;">2. 選擇日期：</label>
-              <input type="date" id="radarDateInput" class="form-control" style="width: 100%;" value="2026-09-08">
-            </div>
-            <div>
-              <label style="font-weight: 700; font-size: 0.85rem; display:block; margin-bottom: 0.25rem;">3. 公差假請假事由：</label>
-              <input type="text" id="radarReasonInput" class="form-control" style="width: 100%;" placeholder="例如：公假派代出席全縣研習">
-            </div>
-          </div>
-        </div>
+    <!-- ========== 模組 6：名冊與權限管理 ========== -->
+    <section id="tabRoster" class="tab-content hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <span>👥</span> 教職員編制底冊 (14 位正式人員清冊)
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">唯一權威姓名主鍵：林𡶙鋌 • 專任代導資格標記 • 兼課超鐘點保護</p>
       </div>
-    </section>
 
-    <!-- 模組 5: 月結造冊中心 -->
-    <section id="tabReports" class="tab-content">
-      <div class="card">
-        <div class="card-header no-print">
-          <div class="card-title"><span>📑</span> 115-1 月結造冊中心 (公文標準核銷清冊)</div>
-          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <select id="reportMonthSelect" class="form-control" onchange="renderCurrentReport()">
-              <option value="9">115 學年度第 1 學期 (9月份)</option>
-              <option value="10">115 學年度第 1 學期 (10月份)</option>
-              <option value="11">115 學年度第 1 學期 (11月份)</option>
-              <option value="12">115 學年度第 1 學期 (12月份)</option>
-            </select>
-            <select id="reportTypeSelect" class="form-control" onchange="renderCurrentReport()">
-              <option value="A">清冊 A：公課排代鐘點費核銷總冊 (11欄公文標準)</option>
-              <option value="C">清冊 C：第 8 節課後輔導鐘點費清冊 ($450/節)</option>
-              <option value="D">清冊 D：每週兼課 (超鐘點 19 節) 鐘點費清冊 ($400/節)</option>
-            </select>
-            <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ 列印公文清冊</button>
-          </div>
-        </div>
-        <div class="card-body" id="officialReportContainer"></div>
-      </div>
-    </section>
-
-    <!-- 模組 6: 學期初操作專區 -->
-    <section id="tabSettings" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span>⚙️</span> 教職員編制清冊與帳號安全管理 (14組官方帳密)</div>
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="custom-table">
-              <thead>
-                <tr>
-                  <th>序號</th>
-                  <th>處室</th>
-                  <th>職稱</th>
-                  <th>教師姓名</th>
-                  <th>領域</th>
-                  <th>兼課</th>
-                  <th>代理導師資格</th>
-                  <th>系統權限</th>
-                  <th>密碼</th>
-                  <th class="no-print" style="width:130px;">帳號管理</th>
-                </tr>
-              </thead>
-              <tbody id="rosterTableBody"></tbody>
-            </table>
-          </div>
-        </div>
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+            <tr>
+              <th class="p-2.5">代碼</th>
+              <th class="p-2.5">處室</th>
+              <th class="p-2.5">職稱</th>
+              <th class="p-2.5">姓名</th>
+              <th class="p-2.5">任教領域</th>
+              <th class="p-2.5">每週超鐘點</th>
+              <th class="p-2.5">專任代導資格</th>
+              <th class="p-2.5">系統權限</th>
+              <th class="p-2.5">預設密碼</th>
+            </tr>
+          </thead>
+          <tbody id="rosterTableBody" class="divide-y divide-slate-200 text-slate-700"></tbody>
+        </table>
       </div>
     </section>
 
   </main>
 
-  <!-- ==================== 🚨 一鍵清空代課清冊防呆 Modal ==================== -->
-  <div class="modal-overlay" id="clearTasksModal">
-    <div class="modal-box" style="max-width: 440px;">
-      <div class="modal-header" style="background:#fef2f2; border-bottom:1px solid #fecaca;">
-        <h3 style="font-weight: 700; font-size: 1.1rem; color: #b91c1c;">⚠️ 危險操作：一鍵清空代課清冊</h3>
-        <button class="btn btn-secondary btn-sm" onclick="closeClearTasksModal()">✕</button>
+  <!-- ==================== 對話框 (MODALS) ==================== -->
+
+  <!-- Modal 1：登入認證視窗 -->
+  <div id="modalLogin" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+      <div class="bg-slate-900 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <span>🔑</span> 教職員登入 / 教室端免密通道
+        </h3>
+        <button onclick="closeModal('modalLogin')" class="text-slate-400 hover:text-white text-lg">✕</button>
       </div>
-      <div class="modal-body">
-        <div style="background:#fff1f2; border:1px solid #fecdd3; padding:0.75rem; border-radius:0.5rem; margin-bottom:1rem; font-size:0.85rem; color:#9f1239; line-height:1.5;">
-          <strong>警告：</strong>此操作將清除目前清冊中的全部紀錄（共 <strong id="clearTasksCount">0</strong> 筆），清空後課表的所有代課覆蓋亦會同步復原。
+      <div class="p-5 space-y-4 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">選擇教職員帳號：</label>
+          <select id="loginTeacherSelect" onchange="updatePasswordHint(this.value)" class="w-full border border-slate-300 rounded-lg p-2 font-medium">
+            <optgroup label="【最高行政管理】">
+              <option value="施銘權" data-pwd="apexczone">施銘權 (教務組長)</option>
+              <option value="管理人" data-pwd="fatman">系統管理人</option>
+            </optgroup>
+            <optgroup label="【處室主任】">
+              <option value="蔡麗昭" data-pwd="tea-0011">蔡麗昭 (教導主任)</option>
+              <option value="吳俊德" data-pwd="tea-0054">吳俊德 (總務主任)</option>
+              <option value="李貞慧" data-pwd="tea-0013">李貞慧 (輔導主任)</option>
+            </optgroup>
+            <optgroup label="【各班導師】">
+              <option value="阮建安" data-pwd="tea-0030">阮建安 (701導師)</option>
+              <option value="蔡明振" data-pwd="tea-0038">蔡明振 (801導師)</option>
+              <option value="張碧菁" data-pwd="tea-0035">張碧菁 (901導師)</option>
+              <option value="林𡶙鋌" data-pwd="tea-3231">林𡶙鋌 (902導師)</option>
+            </optgroup>
+            <optgroup label="【專任與特教】">
+              <option value="吳靜瑜" data-pwd="tea-3234">吳靜瑜 (專任英語/代導)</option>
+              <option value="鄭宇涵" data-pwd="tea-3235">鄭宇涵 (特教資源班)</option>
+            </optgroup>
+          </select>
         </div>
-        <div style="margin-bottom:0.75rem;">
-          <label style="font-weight:700; display:block; margin-bottom:0.35rem; font-size:0.85rem;">請輸入管理防護密碼以確認執行：</label>
-          <div style="position:relative; display:flex; align-items:center;">
-            <input type="password" id="clearTasksPwdInput" class="form-control" style="width:100%; padding-right:2.5rem;" placeholder="請輸入管理密碼 (094504)" onkeydown="if(event.key==='Enter') executeClearAllTasks()">
-            <button type="button" id="btnToggleClearPwd" onclick="toggleClearPasswordVisibility()" style="position:absolute; right:8px; background:none; border:none; cursor:pointer; font-size:1.1rem; padding:2px;" title="目前為隱藏 (*號)，點擊顯示為明文">
-              🙈
-            </button>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">登入密碼：</label>
+          <input type="text" id="loginPasswordInput" value="apexczone" class="w-full border border-slate-300 rounded-lg p-2 font-mono-code text-sm">
+          <div id="loginHintBox" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between text-blue-900">
+            <span>💡 預設密碼：<strong id="loginHintPwdText" class="font-mono-code text-blue-700">apexczone</strong> <small class="text-slate-500">(或萬用碼 094504)</small></span>
+            <button onclick="applyHintPassword()" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-0.5 rounded text-[10px] font-bold">帶入</button>
           </div>
         </div>
-        <div id="clearTasksErrorMsg" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700;"></div>
-      </div>
-      <div class="modal-footer" style="background:#fef2f2; border-top:1px solid #fecaca; justify-content:space-between;">
-        <button class="btn btn-secondary" onclick="closeClearTasksModal()">取消放棄</button>
-        <button class="btn btn-danger" onclick="executeClearAllTasks()">🚨 確認清空所有資料</button>
+
+        <button onclick="executeLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition shadow">
+          確認登入
+        </button>
+
+        <div class="pt-3 border-t border-slate-200">
+          <label class="block font-bold text-slate-600 mb-1.5">📺 教室電視端免密快速通道：</label>
+          <div class="grid grid-cols-4 gap-1.5">
+            <button onclick="quickClassLogin('701')" class="bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 border border-slate-300 py-1.5 rounded font-bold transition">701 班</button>
+            <button onclick="quickClassLogin('801')" class="bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 border border-slate-300 py-1.5 rounded font-bold transition">801 班</button>
+            <button onclick="quickClassLogin('901')" class="bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 border border-slate-300 py-1.5 rounded font-bold transition">901 班</button>
+            <button onclick="quickClassLogin('902')" class="bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 border border-slate-300 py-1.5 rounded font-bold transition">902 班</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ==================== 📥 清冊匯入檢核確認彈窗 (Preview Modal) ==================== -->
-  <div class="modal-overlay" id="csvPreviewModal">
-    <div class="modal-box" style="max-width: 920px;">
-      <div class="modal-header">
-        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">📥 代課清冊匯入檢核精靈 (前 4 筆預覽)</h3>
-        <button class="btn btn-secondary btn-sm" onclick="closeTaskImportPreview()">✕ 取消</button>
+  <!-- Modal 2：13 欄清冊退件診斷視窗 -->
+  <div id="modalCsvDiagnostic" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border-2 border-rose-500">
+      <div class="bg-rose-600 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <span>⚠️</span> 代課清冊格式不合退件通知 (11 欄舊格式拒收)
+        </h3>
+        <button onclick="closeModal('modalCsvDiagnostic')" class="text-white hover:text-rose-200 text-lg">✕</button>
       </div>
-      <div class="modal-body">
-        <div id="csvPreviewSummary" style="background:#f8fafc; border:1px solid #cbd5e1; padding:0.75rem 1rem; border-radius:0.5rem; margin-bottom:1rem; font-size:0.85rem; line-height:1.6;">
+      <div class="p-5 space-y-4 text-xs">
+        <div class="bg-rose-50 border border-rose-200 p-3 rounded-lg space-y-2 text-rose-950">
+          <div class="font-bold text-sm text-rose-800 flex items-center gap-1.5">
+            <span>🛑</span> 檢核未通過原因診斷：
+          </div>
+          <ul class="list-disc pl-5 space-y-1">
+            <li><strong>欄位數量不符：</strong>偵測到上傳檔案為 <strong>11 欄</strong>，系統已全面升級為「<strong>標準 13 欄原子化規格</strong>」。</li>
+            <li><strong>缺少必要欄位：</strong>缺少【第 5 欄：星期】與【第 6 欄：班級/堂】。</li>
+            <li><strong>節數規範違規：</strong>舊格式備註欄寫有「701第1節 701第3節」；新標準規定<strong>每列最多只能登記 1 堂課 (只能填 1 或純代導 0)</strong>，多堂課請分列登記。</li>
+          </ul>
         </div>
-        <div class="table-responsive" style="max-height: 240px; border:1px solid #e2e8f0;">
-          <table class="custom-table" style="font-size:0.75rem;">
-            <thead>
-              <tr style="background:#f1f5f9;">
-                <th>項次</th><th>代課人</th><th>職稱</th><th>核准文號</th><th>代課日期</th><th>節次位置</th><th>金額</th><th>被代教師</th><th>事由</th><th>備註</th>
-              </tr>
-            </thead>
-            <tbody id="csvPreviewTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="modal-footer" style="justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-        <span style="font-size:0.8rem; color:#64748b;">請確認欄位與日期皆已正確對齊後再匯入。</span>
-        <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
-          <button class="btn btn-secondary" onclick="closeTaskImportPreview()">放棄</button>
-          <button class="btn btn-primary" onclick="confirmTaskCsvImport('replace')">🔄 覆蓋全冊</button>
-          <button class="btn btn-success" onclick="confirmTaskCsvImport('append')">➕ 累加合併 (保留舊月分，接續新增)</button>
+        <div class="flex items-center justify-between pt-2">
+          <button onclick="download13ColTemplate()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg transition shadow flex items-center gap-1.5">
+            <span>📥</span> 下載標準 13 欄空白範本 (CSV)
+          </button>
+          <button onclick="closeModal('modalCsvDiagnostic')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg transition">
+            關閉
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ==================== 新增代課 Modal (含獨立核准文號與測試標註) ==================== -->
-  <div class="modal-overlay" id="newSubModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">➕ 新增公課排代記錄</h3>
-        <button class="btn btn-secondary btn-sm" onclick="closeNewSubModal()">✕ 關閉</button>
+  <!-- Modal 3：黃色衝突檢核勾選精靈 -->
+  <div id="modalConflictWizard" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border-2 border-amber-500">
+      <div class="bg-amber-600 text-white p-4 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-base flex items-center gap-2">
+            <span>🟡</span> 代課清冊累加檢核報告與衝突勾選精靈
+          </h3>
+          <p class="text-xs text-amber-100 mt-0.5">系統已自動過濾完全相符之資料，請針對有異動的課堂逐筆過目勾選</p>
+        </div>
+        <button onclick="closeModal('modalConflictWizard')" class="text-white hover:text-amber-200 text-lg">✕</button>
       </div>
-      <div class="modal-body">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="p-5 overflow-y-auto space-y-4 text-xs flex-1">
+        <div class="grid grid-cols-3 gap-2 text-center font-bold">
+          <div class="bg-emerald-50 border border-emerald-300 text-emerald-800 p-2.5 rounded-lg">
+            <div class="text-lg font-black">36 筆</div>
+            <div class="text-[11px] font-normal">🟢 全新資料 (直接排入)</div>
+          </div>
+          <div class="bg-slate-100 border border-slate-300 text-slate-600 p-2.5 rounded-lg">
+            <div class="text-lg font-black">36 筆</div>
+            <div class="text-[11px] font-normal">⚪ 完全吻合 (自動略過)</div>
+          </div>
+          <div class="bg-amber-100 border border-amber-400 text-amber-900 p-2.5 rounded-lg">
+            <div class="text-lg font-black">2 筆</div>
+            <div class="text-[11px] font-normal">🟡 課堂重疊異動 (需過目)</div>
+          </div>
+        </div>
+        <div id="conflictCardsContainer" class="space-y-3"></div>
+      </div>
+      <div class="bg-slate-100 p-4 border-t border-slate-200 flex items-center justify-between">
+        <span class="text-xs text-slate-600">已過目 2 筆衝突決策</span>
+        <button onclick="closeModal('modalConflictWizard'); showToast('已完成衝突合併');" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-1.5 rounded transition shadow">
+          ✅ 確認執行合併
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4：手動新增排代彈窗 -->
+  <div id="modalSubCalculator" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200">
+      <div class="bg-emerald-700 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <span>➕</span> 新增排代記錄與課程單價試算
+        </h3>
+        <button onclick="closeModal('modalSubCalculator')" class="text-white hover:text-emerald-200 text-lg">✕</button>
+      </div>
+      <div class="p-5 space-y-3.5 text-xs">
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">代課日期：</label>
-            <input type="date" id="modalSubDate" class="form-control" style="width: 100%;" value="2026-09-08">
+            <label class="block font-bold text-slate-700 mb-1">代課日期：</label>
+            <input type="date" id="calcSubDate" value="2026-10-06" onchange="recalculateTutorFee()" class="w-full border border-slate-300 rounded p-1.5">
           </div>
           <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">班級：</label>
-            <select id="modalSubClass" class="form-control" style="width: 100%;">
-              <option value="701">701 班</option>
+            <label class="block font-bold text-slate-700 mb-1">授課/受代班級：</label>
+            <select id="calcClassSelect" onchange="recalculateTutorFee()" class="w-full border border-slate-300 rounded p-1.5">
               <option value="801">801 班</option>
+              <option value="701">701 班</option>
               <option value="901">901 班</option>
               <option value="902">902 班</option>
             </select>
           </div>
           <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">節次：</label>
-            <select id="modalSubPeriod" class="form-control" style="width: 100%;">
-              <option value="0">早自修 (07:30 - 08:15)</option>
+            <label class="block font-bold text-slate-700 mb-1">請假教師 (原授課)：</label>
+            <select id="calcOrigTeacher" onchange="checkHomeroomStatus()" class="w-full border border-slate-300 rounded p-1.5">
+              <option value="蔡明振" data-is-tutor="true" data-class="801">蔡明振 (801導師)</option>
+              <option value="阮建安" data-is-tutor="true" data-class="701">阮建安 (701導師)</option>
+              <option value="張碧菁" data-is-tutor="true" data-class="901">張碧菁 (901導師)</option>
+              <option value="林𡶙鋌" data-is-tutor="true" data-class="902">林𡶙鋌 (902導師)</option>
+              <option value="陳文鈴" data-is-tutor="false">陳文鈴 (體衛組長)</option>
+              <option value="蔡麗昭" data-is-tutor="false">蔡麗昭 (教導主任)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">代課人員：</label>
+            <select id="calcSubTeacherSelect" onchange="recalculateTutorFee()" class="w-full border border-slate-300 rounded p-1.5 font-bold">
+              <option value="陳文鈴">陳文鈴 (體衛組長/專任代導)</option>
+              <option value="吳靜瑜">吳靜瑜 (專任英語/專任代導)</option>
+              <option value="蔡芷儀">蔡芷儀 (註冊組長/專任代導)</option>
+              <option value="阮建安">阮建安 (701導師)</option>
+              <option value="蔡明振">蔡明振 (801導師)</option>
+              <option value="施銘權">施銘權 (教務組長)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">課程性質與核銷單價：</label>
+            <select id="calcCourseTypeSelect" onchange="handleCourseTypeChange()" class="w-full border border-slate-300 rounded p-1.5 font-bold text-blue-900">
+              <option value="regular" data-rate="455">標準公費排代 ($455 / 節)</option>
+              <option value="afterSchool" data-rate="450">第 8 節課後輔導 ($450 / 節)</option>
+              <option value="selfPaid" data-rate="0">自費 / 免請款代課 ($0)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">每節核銷單價 ($)：</label>
+            <input type="number" id="calcCustomRateInput" value="455" readonly onchange="recalculateTutorFee()" class="w-full border border-slate-300 rounded p-1.5 bg-slate-100 font-mono-code font-bold">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">課堂節次：</label>
+            <select id="calcPeriodSelect" onchange="recalculateTutorFee()" class="w-full border border-slate-300 rounded p-1.5">
               <option value="1">第 1 節</option>
               <option value="2">第 2 節</option>
               <option value="3">第 3 節</option>
@@ -435,235 +658,2088 @@
               <option value="5">第 5 節</option>
               <option value="6">第 6 節</option>
               <option value="7">第 7 節</option>
-              <option value="8">第 8 節</option>
+              <option value="8">第 8 節 (課後輔導)</option>
+              <option value="0">純代理導師 (0 節課堂)</option>
             </select>
           </div>
           <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">科目：</label>
-            <input type="text" id="modalSubSubject" class="form-control" style="width: 100%;" placeholder="國文、數學、理化...">
-          </div>
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">原授課教師 (請假)：</label>
-            <select id="modalSubOriginalTeacher" class="form-control" style="width: 100%;"></select>
-          </div>
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">代課教師：</label>
-            <select id="modalSubTargetTeacher" class="form-control" style="width: 100%;"></select>
-          </div>
-          <div style="grid-column: span 2;">
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">核准文號 (法定獨立欄)：</label>
-            <input type="text" id="modalSubDocNo" class="form-control" style="width: 100%;" placeholder="例如：115年9月02日府教課二字第1150568430號">
-          </div>
-          <div style="grid-column: span 2;">
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">公差假請假事由：</label>
-            <input type="text" id="modalSubReason" class="form-control" style="width: 100%;" placeholder="例如：公假出席全縣領域召集人會議">
-          </div>
-          <div style="grid-column: span 2; background:#fffbeb; padding:0.6rem; border-radius:0.375rem; border:1px solid #fde68a;">
-            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:700; color:#b45309;">
-              <input type="checkbox" id="modalSubIsTest">
-              <span>⚠️ 標記為「測試 / 範例」資料（事由將自動加上【測試】，並帶警示紅標籤）</span>
-            </label>
+            <label class="block font-bold text-slate-700 mb-1">授課科目：</label>
+            <input type="text" id="calcSubjectInput" value="家政" class="w-full border border-slate-300 rounded p-1.5">
           </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeNewSubModal()">取消</button>
-        <button class="btn btn-primary" onclick="saveNewSubTask()">確認儲存</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- ==================== 個人修改密碼 Modal ==================== -->
-  <div class="modal-overlay" id="changePasswordModal">
-    <div class="modal-box" style="max-width: 420px;">
-      <div class="modal-header">
-        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">🔑 個人密碼安全變更</h3>
-        <button class="btn btn-secondary btn-sm" onclick="closeChangePasswordModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">輸入目前舊密碼：</label>
-          <input type="password" id="pwdOldInput" class="form-control" style="width: 100%;">
+        <div id="tutorFeeControlBox" class="bg-emerald-50 border-2 border-emerald-400 p-3 rounded-xl space-y-1.5">
+          <label class="flex items-center gap-2 font-bold text-emerald-950 cursor-pointer">
+            <input type="checkbox" id="calcIsTutorBox" checked onchange="recalculateTutorFee()" class="text-emerald-600 focus:ring-emerald-500 rounded">
+            <span>兼任全日代理導師 (全日差假法定拆算)</span>
+          </label>
+          <div id="calcFormulaHint" class="text-[11px] text-emerald-800 leading-relaxed"></div>
         </div>
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">設定新密碼 (至少4字元)：</label>
-          <input type="password" id="pwdNewInput" class="form-control" style="width: 100%;">
-        </div>
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">再次確認新密碼：</label>
-          <input type="password" id="pwdConfirmInput" class="form-control" style="width: 100%;">
-        </div>
-        <div id="changePwdErrorMsg" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:700;"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeChangePasswordModal()">取消</button>
-        <button class="btn btn-primary" onclick="submitChangePassword()">確認變更</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- ==================== 管理員：編修教師/重設密碼 Modal ==================== -->
-  <div class="modal-overlay" id="adminEditTeacherModal">
-    <div class="modal-box" style="max-width: 500px;">
-      <div class="modal-header">
-        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">✏️ 管理員維護教職員資料與密碼</h3>
-        <button class="btn btn-secondary btn-sm" onclick="closeAdminEditTeacherModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="adminTeacherId">
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">教師姓名 (唯讀)：</label>
-          <input type="text" id="adminTeacherName" class="form-control" style="width: 100%; background:#f1f5f9;" readonly>
+        <div class="bg-slate-100 p-3 rounded-lg flex items-center justify-between">
+          <span class="font-bold text-slate-700">應領金額試算：</span>
+          <span id="calcTotalAmountText" class="text-base font-extrabold text-rose-700 font-mono-code">$948 元</span>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">編制處室：</label>
-            <input type="text" id="adminTeacherDept" class="form-control" style="width: 100%;">
-          </div>
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">申報職稱：</label>
-            <input type="text" id="adminTeacherTitle" class="form-control" style="width: 100%;">
-          </div>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">系統權限等級：</label>
-            <select id="adminTeacherRole" class="form-control" style="width: 100%;">
-              <option value="teacher">一般任課教師</option>
-              <option value="admin">最高全權限管理員</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">變更登入密碼：</label>
-            <input type="text" id="adminTeacherPassword" class="form-control" style="width: 100%; font-family:monospace; font-weight:700;">
-          </div>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">兼課超鐘點 (每週節數)：</label>
-            <input type="number" id="adminTeacherOvertime" class="form-control" style="width: 100%;" min="0" max="10">
-          </div>
-          <div style="display: flex; align-items: center; padding-top: 1.25rem;">
-            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
-              <input type="checkbox" id="adminTeacherSubTutor">
-              <span style="font-weight:700; color:#16a34a;">具備專任代導資格</span>
-            </label>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeAdminEditTeacherModal()">取消</button>
-        <button class="btn btn-primary" onclick="saveAdminTeacherChanges()">💾 儲存變更</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- ==================== 管理員：課堂編輯/新增彈出視窗 ==================== -->
-  <div class="modal-overlay" id="editCourseModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;" id="modalCourseTitle">✏️ 課堂編輯 / 新增特教抽離課</h3>
-        <button class="btn btn-secondary btn-sm" onclick="closeEditCourseModal()">✕ 關閉</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="editCourseId">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">授課班級代號：</label>
-            <select id="editCourseClass" class="form-control" style="width: 100%;">
-              <option value="701">701 班 (普通班)</option>
-              <option value="學701">學701 (特教資源班抽離)</option>
-              <option value="801">801 班 (普通班)</option>
-              <option value="學801">學801 (特教資源班抽離)</option>
-              <option value="901">901 班 (普通班)</option>
-              <option value="902">902 班 (普通班)</option>
-              <option value="特教資源班">特教資源班 (全校合班)</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">星期：</label>
-            <select id="editCourseDay" class="form-control" style="width: 100%;">
-              <option value="1">星期一</option>
-              <option value="2">星期二</option>
-              <option value="3">星期三</option>
-              <option value="4">星期四</option>
-              <option value="5">星期五</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">節次：</label>
-            <select id="editCoursePeriod" class="form-control" style="width: 100%;">
-              <option value="0">早自修 (07:30 - 08:15)</option>
-              <option value="1">第 1 節 (08:25 - 09:10)</option>
-              <option value="2">第 2 節 (09:20 - 10:05)</option>
-              <option value="3">第 3 節 (10:15 - 11:00)</option>
-              <option value="4">第 4 節 (11:10 - 11:55)</option>
-              <option value="5">第 5 節 (13:10 - 13:55)</option>
-              <option value="6">第 6 節 (14:05 - 14:50)</option>
-              <option value="7">第 7 節 (15:00 - 15:45)</option>
-              <option value="8">第 8 節 (16:00 - 16:45 輔導課)</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">授課科目名稱：</label>
-            <input type="text" id="editCourseSubject" class="form-control" style="width: 100%;" placeholder="例如：國文、數學、學習策略">
-          </div>
-          <div style="grid-column: span 2;">
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">授課教師：</label>
-            <select id="editCourseTeacher" class="form-control" style="width: 100%;">
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer" style="display: flex; justify-content: space-between;">
-        <button class="btn btn-danger" id="btnDeleteCourse" onclick="deleteCurrentCourse()">🗑️ 刪除此堂課</button>
-        <div style="display: flex; gap: 0.5rem;">
-          <button class="btn btn-secondary" onclick="closeEditCourseModal()">取消</button>
-          <button class="btn btn-primary" onclick="saveCourseChange()">💾 儲存更正</button>
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+          <button onclick="closeModal('modalSubCalculator')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded transition">取消</button>
+          <button onclick="saveNewSubTaskDemo()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded transition shadow">
+            確認儲存排代
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ==================== 發起自辦調課 Modal ==================== -->
-  <div class="modal-overlay" id="newSwapModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 style="font-weight: 700; font-size: 1.1rem; color: #1e3a8a;">➕ 發起自辦調代課申請</h3>
-        <button class="btn btn-secondary btn-sm" onclick="closeNewSwapModal()">✕ 關閉</button>
+  <!-- Modal 5：發起自辦調代課彈窗 -->
+  <div id="modalPeerSwap" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
+      <div class="bg-purple-700 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <span>🔄</span> 發起同仁自辦調代課申請
+        </h3>
+        <button onclick="closeModal('modalPeerSwap')" class="text-white hover:text-purple-200 text-lg">✕</button>
       </div>
-      <div class="modal-body">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="p-5 space-y-3.5 text-xs">
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">申請人 (教師 A)：</label>
-            <input type="text" id="modalSwapTeacherA" class="form-control" style="width: 100%; background: #f1f5f9;" readonly>
+            <label class="block font-bold text-slate-700 mb-1">申請教師 (您)：</label>
+            <input type="text" id="swapTeacherAInput" value="蔡明振" readonly class="w-full bg-slate-100 border border-slate-300 rounded p-1.5 font-bold text-slate-700">
           </div>
           <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">受調 / 代課教師 (教師 B)：</label>
-            <select id="modalSwapTeacherB" class="form-control" style="width: 100%;"></select>
+            <label class="block font-bold text-slate-700 mb-1">受調/代課同仁：</label>
+            <select id="swapTeacherBSelect" class="w-full border border-slate-300 rounded p-1.5 font-bold text-slate-800">
+              <option value="阮建安">阮建安 (701導師 - 國文)</option>
+              <option value="張碧菁">張碧菁 (901導師 - 數學)</option>
+              <option value="林𡶙鋌">林𡶙鋌 (902導師 - 自然)</option>
+              <option value="吳靜瑜">吳靜瑜 (專任英語)</option>
+            </select>
           </div>
           <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">原課堂 (申請人原課)：</label>
-            <input type="text" id="modalSwapClassA" class="form-control" style="width: 100%;" placeholder="例：週二第6節 701 數學">
+            <label class="block font-bold text-slate-700 mb-1">申請人原課堂：</label>
+            <input type="text" id="swapCourseAInput" value="週二第2節 801 國文" class="w-full border border-slate-300 rounded p-1.5 text-blue-900 font-bold">
           </div>
           <div>
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">互調課堂 (或純代課)：</label>
-            <input type="text" id="modalSwapClassB" class="form-control" style="width: 100%;" placeholder="例：互調週四第4節 701 英語">
-          </div>
-          <div style="grid-column: span 2;">
-            <label style="font-weight: 600; display:block; margin-bottom: 0.25rem;">調課事由說明：</label>
-            <input type="text" id="modalSwapReason" class="form-control" style="width: 100%;" placeholder="例：因事調課互代，已徵得同仁同意">
+            <label class="block font-bold text-slate-700 mb-1">對調/代授課堂：</label>
+            <input type="text" id="swapCourseBInput" value="週四第2節 701 國文" class="w-full border border-slate-300 rounded p-1.5 text-purple-900 font-bold">
           </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeNewSwapModal()">取消</button>
-        <button class="btn btn-primary" onclick="submitNewSwap()">送出申請</button>
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+          <button onclick="closeModal('modalPeerSwap')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded transition">取消</button>
+          <button onclick="submitSwapDemo()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-1.5 rounded transition shadow">
+            送出調課申請
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
-  <script src="data/schedule_base.js"></script>
-  <script src="js/app.js"></script>
+  <!-- Modal 6：課堂資料編輯/特教抽離課彈窗 -->
+  <div id="modalEditCourse" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+      <div class="bg-slate-800 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <span>✏️</span> 課堂編輯 / 特教抽離並行課設定
+        </h3>
+        <button onclick="closeModal('modalEditCourse')" class="text-white hover:text-slate-300 text-lg">✕</button>
+      </div>
+      <div class="p-5 space-y-3.5 text-xs">
+        <p class="text-slate-600">本彈窗用於設定特教抽離並行課（學701/學801/學901）或調整原班授課。</p>
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+          <button onclick="closeModal('modalEditCourse')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded transition">關閉</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 7：Google 試算表雙向同步設定視窗 -->
+  <div id="modalCloudSync" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200">
+      <div class="bg-slate-900 text-white p-4 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">☁️</span>
+          <div>
+            <h3 class="font-bold text-sm md:text-base">Google 試算表雙向同步設定</h3>
+            <p class="text-[11px] text-slate-400">零伺服器維護成本 • 全校跨裝置 SWR 瞬開連動</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modalCloudSync')" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs">
+        <!-- 網址輸入區 -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Google Apps Script 網路應用程式網址 (Web App URL)：</label>
+          <div class="flex gap-2">
+            <input type="url" id="cloudGasUrlInput" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="flex-1 border border-slate-300 rounded-lg p-2 font-mono-code text-[11px] text-slate-800 focus:ring-2 focus:ring-blue-500">
+            <button onclick="saveAndTestCloudUrl()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1 shrink-0">
+              <span>🔗</span> 儲存並連線
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">
+            * 網址會安全保存在這台電腦的瀏覽器中；其他電腦或教室電視只需在初次打開時貼上一次即可。
+          </p>
+        </div>
+
+        <!-- 連線狀態面板 -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-700">連線診斷狀態：</span>
+            <span id="cloudModalStatusBadge" class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800">
+              ⚪ 尚未連線 (目前使用本機離線資料)
+            </span>
+          </div>
+          <div class="text-[11px] text-slate-600 space-y-1">
+            <div>最後同步時間：<strong id="cloudLastSyncTimeText" class="font-mono-code text-slate-800">尚未同步</strong></div>
+            <div>雲端排代總筆數：<strong id="cloudTasksCountText" class="font-mono-code text-blue-700">3 筆 (本機)</strong></div>
+          </div>
+        </div>
+
+        <!-- 雙向操作按鈕組 -->
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <button onclick="triggerManualCloudPull()" class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 p-2.5 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition">
+            <span class="text-base">📥</span>
+            <span>從試算表拉取最新進度</span>
+            <span class="text-[10px] font-normal text-emerald-600">(覆蓋本地，適合教室端或同仁)</span>
+          </button>
+
+          <button onclick="triggerManualCloudPushAll()" class="bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-800 p-2.5 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition">
+            <span class="text-base">📤</span>
+            <span>將本機現有資料推至試算表</span>
+            <span class="text-[10px] font-normal text-purple-600">(初次建置 / 組長專用整批初始化)</span>
+          </button>
+        </div>
+
+        <!-- 折疊式 3 步驟建置指引 -->
+        <details class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-[11px] text-blue-950">
+          <summary class="font-bold cursor-pointer text-blue-800 flex items-center justify-between">
+            <span>📖 如何取得專屬 Apps Script 網址？(3 步驟教學)</span>
+            <span class="text-xs">展開 ▼</span>
+          </summary>
+          <ol class="list-decimal pl-4 mt-2 space-y-1 text-slate-700">
+            <li>在 Google 雲端硬碟新增一份 Google 試算表，命名為「飛沙國中排代資料庫」。</li>
+            <li>點擊上方選單<strong>「擴充功能」➔「Apps Script」</strong>，貼上 <code>gas_code.js</code> 的程式碼並儲存。</li>
+            <li>在編輯器上方點選<strong>「部署」➔「新增部署作業」</strong>，類型選「網路應用程式」，執行身分選「我」，誰可以存取選<strong>「所有人 (Anyone)」</strong>，複製產生的網址貼入上方即可！</li>
+          </ol>
+        </details>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+          <button onclick="closeModal('modalCloudSync')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-1.5 rounded-lg transition font-medium">
+            關閉
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 浮動通知 Toast -->
+  <div id="toastNotification" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-slate-700 text-xs font-medium flex items-center gap-2 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none">
+    <span id="toastIcon">✅</span>
+    <span id="toastMessage">操作成功</span>
+  </div>
+
+  <!-- ==================== 核心系統腳本 ==================== -->
+  <script>
+    // 1. 14 位官方教職員編制底冊
+    const OFFICIAL_TEACHERS = [
+      { id: "T00", dept: "教務處", title: "系統管理人", name: "管理人", role: "admin", subject: "系統維運", overtimeWeekly: 0, isSubTutorQualified: false },
+      { id: "T04", dept: "教導處", title: "教務組長", name: "施銘權", role: "admin", subject: "數學", overtimeWeekly: 2, isSubTutorQualified: false },
+      { id: "T01", dept: "教導處", title: "教導主任", name: "蔡麗昭", role: "teacher", subject: "自然", overtimeWeekly: 2, isSubTutorQualified: false },
+      { id: "T02", dept: "總務處", title: "總務主任", name: "吳俊德", role: "teacher", subject: "生活科技", overtimeWeekly: 0, isSubTutorQualified: false },
+      { id: "T03", dept: "輔導室", title: "輔導室主任", name: "李貞慧", role: "teacher", subject: "社會", overtimeWeekly: 4, isSubTutorQualified: false },
+      { id: "T05", dept: "教導處", title: "註冊組長", name: "蔡芷儀", role: "teacher", subject: "藝術", overtimeWeekly: 0, isSubTutorQualified: true },
+      { id: "T06", dept: "教導處", title: "訓導組長", name: "林秋霞", role: "teacher", subject: "體育", overtimeWeekly: 1, isSubTutorQualified: false },
+      { id: "T07", dept: "教導處", title: "體衛組長", name: "陳文鈴", role: "teacher", subject: "綜合", overtimeWeekly: 0, isSubTutorQualified: true },
+      { id: "T08", dept: "導師", title: "701導師", name: "阮建安", role: "teacher", subject: "國文", overtimeWeekly: 3, isSubTutorQualified: false },
+      { id: "T09", dept: "導師", title: "901導師", name: "張碧菁", role: "teacher", subject: "數學", overtimeWeekly: 1, isSubTutorQualified: false },
+      { id: "T10", dept: "導師", title: "801導師", name: "蔡明振", role: "teacher", subject: "國文", overtimeWeekly: 3, isSubTutorQualified: false },
+      { id: "T11", dept: "導師", title: "902導師", name: "林𡶙鋌", role: "teacher", subject: "自然", overtimeWeekly: 3, isSubTutorQualified: false },
+      { id: "T12", dept: "教導處", title: "專任教師", name: "吳靜瑜", role: "teacher", subject: "英語", overtimeWeekly: 0, isSubTutorQualified: true },
+      { id: "T13", dept: "輔導室", title: "特教教師", name: "鄭宇涵", role: "teacher", subject: "特教資源班", overtimeWeekly: 0, isSubTutorQualified: false }
+    ];
+
+    // 2. 全校 14 位教職員全週課表
+    const MASTER_SCHEDULE_MAP = {
+      "蔡明振": {
+        1: { 1: "801 國文", 2: "901 國文" },
+        2: { 0: "801 導師時間", 2: "801 國文", 5: "701 國文", 7: "901 國文", 8: "801 課輔國文" },
+        3: { 1: "901 國文", 3: "801 國文" },
+        4: { 2: "801 國文", 3: "901 國文", 8: "801 課輔國文" },
+        5: { 1: "801 國文", 2: "901 國文", 7: "801 班會" }
+      },
+      "阮建安": {
+        1: { 3: "701 國文" },
+        2: { 2: "701 國文", 5: "902 國文", 6: "801 國文", 8: "701 課輔國文" },
+        3: { 1: "701 國文", 2: "902 國文" },
+        4: { 3: "701 國文", 5: "902 國文" },
+        5: { 4: "701 國文", 6: "701 閱讀", 7: "701 班會" }
+      },
+      "吳靜瑜": {
+        1: { 2: "701 英語", 3: "901 英語" },
+        2: { 3: "701 英語", 6: "902 英語", 7: "801 英語" },
+        3: { 1: "902 英語", 3: "901 英語", 6: "801 英語", 8: "901 課輔英語" },
+        4: { 1: "701 英語", 2: "902 英語" },
+        5: { 3: "901 英語", 5: "801 英語" }
+      },
+      "陳文鈴": {
+        1: { 5: "701 綜合" },
+        2: { 1: "801 家政", 6: "701 綜合" },
+        3: { 7: "901 綜合" },
+        4: { 7: "701 綜合" },
+        5: { 6: "801 綜合" }
+      },
+      "施銘權": {
+        1: { 4: "701 數學" },
+        2: { 1: "901 數學", 4: "701 數學" },
+        3: { 2: "701 數學" },
+        4: { 2: "701 數學" },
+        5: {}
+      },
+      "蔡麗昭": {
+        1: { 2: "801 理化", 7: "701 自然" },
+        2: { 2: "901 理化", 7: "701 自然" },
+        3: { 2: "901 理化", 4: "801 理化" },
+        4: { 4: "801 理化" },
+        5: { 2: "701 自然", 4: "801 理化" }
+      },
+      "李貞慧": {
+        1: { 6: "701 社會" },
+        2: { 3: "801 社會", 5: "701 社會", 6: "901 社會" },
+        3: { 4: "701 社會" },
+        4: { 4: "902 社會", 7: "801 社會" },
+        5: { 1: "701 社會", 5: "901 社會" }
+      },
+      "蔡芷儀": {
+        1: {},
+        2: { 3: "902 視覺藝術", 5: "801 視覺藝術" },
+        3: { 5: "701 視覺藝術", 6: "701 視覺藝術" },
+        4: { 5: "801 視覺藝術" },
+        5: { 6: "901 視覺藝術" }
+      },
+      "吳俊德": {
+        1: { 7: "801 生活科技" },
+        2: { 5: "901 生活科技" },
+        3: { 2: "801 生活科技", 7: "701 生活科技" },
+        4: { 3: "902 生活科技", 6: "701 生活科技" },
+        5: {}
+      },
+      "林秋霞": {
+        1: { 1: "701 體育", 4: "801 健體" },
+        2: { 1: "701 體育", 2: "902 體育" },
+        3: { 5: "801 體育", 7: "902 體育" },
+        4: { 4: "701 體育", 6: "801 體育" },
+        5: { 3: "701 健體", 5: "902 體育" }
+      },
+      "張碧菁": {
+        1: { 1: "901 數學", 3: "801 數學" },
+        2: { 3: "901 數學", 4: "901 導師時間" },
+        3: { 1: "801 數學", 6: "901 數學", 8: "901 課輔數學" },
+        4: { 1: "902 數學", 2: "901 數學" },
+        5: { 1: "901 數學", 2: "801 數學", 7: "901 班會" }
+      },
+      "林𡶙鋌": {
+        1: { 1: "902 自然" },
+        2: { 4: "902 自然", 7: "902 自然" },
+        3: { 3: "902 自然" },
+        4: { 4: "901 理化", 6: "902 自然", 8: "902 課輔自然" },
+        5: { 4: "901 理化", 6: "902 自然", 7: "902 班會" }
+      },
+      "鄭宇涵": {
+        1: { 2: "學701 特教抽離" },
+        2: { 2: "學801 特教抽離", 5: "學701 特教抽離" },
+        3: { 3: "學901 特教抽離" },
+        4: { 3: "學701 特教抽離" },
+        5: { 2: "學901 特教抽離" }
+      },
+      "管理人": { 1: {}, 2: {}, 3: {}, 4: {}, 5: {} }
+    };
+
+    // 班級導師對照
+    const CLASS_TUTOR_MAP = {
+      "701": "阮建安",
+      "801": "蔡明振",
+      "901": "張碧菁",
+      "902": "林𡶙鋌"
+    };
+
+    // 週次常態日曆 (第 6 週: 10/05 ~ 10/09)
+    const SCHEDULE_WEEK_DAYS = [
+      { dayNum: 1, label: "週一", dateStr: "10/05", rocDate: "1151005" },
+      { dayNum: 2, label: "週二", dateStr: "10/06", rocDate: "1151006" },
+      { dayNum: 3, label: "週三", dateStr: "10/07", rocDate: "1151007" },
+      { dayNum: 4, label: "週四", dateStr: "10/08", rocDate: "1151008" },
+      { dayNum: 5, label: "週五", dateStr: "10/09", rocDate: "1151009" }
+    ];
+
+    // 涵蓋早自修至第 8 節
+    const PERIOD_TIMES = {
+      0: "07:30 - 08:15",
+      1: "08:25 - 09:10",
+      2: "09:20 - 10:05",
+      3: "10:15 - 11:00",
+      4: "11:10 - 11:55",
+      5: "13:10 - 13:55",
+      6: "14:05 - 14:50",
+      7: "15:00 - 15:45",
+      8: "16:00 - 16:45"
+    };
+
+    // 3. 全域資料庫狀態
+    let appData = {
+      currentUser: "施銘權",
+      currentRole: "admin",
+      reportFilter: "all",
+      radarViewMode: "matrix",
+      radarDate: "2026-10-06",
+      radarTeacher: "蔡明振",
+      currentScheduleClass: "901",
+      tasks: [
+        {
+          id: "TASK_1151006_801_1",
+          subTeacher: "蔡明振",
+          title: "801導師",
+          docNo: "115年9月2日府教課二字第1152442203號",
+          date: "1151006",
+          dayOfWeek: "週二",
+          classPeriod: "801 第1節",
+          classId: "801",
+          period: 1,
+          subject: "家政", // 關鍵科目鎖定
+          courseType: "regular",
+          periodsCount: 1,
+          rate: 455,
+          tutorFee: 0,
+          amount: 455,
+          originalTeacher: "陳文鈴",
+          reason: "國中綜合活動領域增能研習",
+          note: "—"
+        },
+        {
+          id: "TASK_1151002_902_7",
+          subTeacher: "陳文鈴",
+          title: "體衛組長",
+          docNo: "115年9月11日府教課二字第1152444635號",
+          date: "1151002",
+          dayOfWeek: "週五",
+          classPeriod: "902 第7節",
+          classId: "902",
+          period: 7,
+          subject: "班會",
+          courseType: "regular",
+          periodsCount: 1,
+          rate: 455,
+          tutorFee: 493,
+          amount: 948,
+          originalTeacher: "林𡶙鋌",
+          reason: "中小學科展指導研習",
+          note: "兼全日代導 (31天拆算)"
+        },
+        {
+          id: "TASK_1151008_901_0",
+          subTeacher: "吳靜瑜",
+          title: "專任教師",
+          docNo: "115年9月11日府教體二字第1152444662號",
+          date: "1151008",
+          dayOfWeek: "週四",
+          classPeriod: "901 全日代導",
+          classId: "901",
+          period: 0,
+          subject: "代理導師業務",
+          courseType: "regular",
+          periodsCount: 0,
+          rate: 455,
+          tutorFee: 493,
+          amount: 493,
+          originalTeacher: "張碧菁",
+          reason: "氣候行動交流會",
+          note: "純代理導師 (無授課)"
+        }
+      ],
+      swaps: [
+        {
+          id: "SWAP-1151006-01",
+          teacherA: "蔡明振",
+          courseA: "週二第2節 801 國文",
+          teacherB: "阮建安",
+          courseB: "週四第2節 701 國文",
+          reason: "導師輔導事務協調互換",
+          status: "pending_peer"
+        }
+      ]
+    };
+
+    // ==========================================
+    // 3.5 雲端 Google 試算表雙向同步核心 (GAS Bridge)
+    // ==========================================
+    const CLOUD_STORAGE_KEY = "feisha_gas_api_url";
+
+    function getCloudGasUrl() {
+      return localStorage.getItem(CLOUD_STORAGE_KEY) || "";
+    }
+
+    function setCloudSyncStatusBadge(state, text) {
+      const dot = document.getElementById("cloudSyncDot");
+      const label = document.getElementById("cloudSyncText");
+      const modalBadge = document.getElementById("cloudModalStatusBadge");
+
+      if (dot && label) {
+        label.textContent = text;
+        if (state === "online") {
+          dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+        } else if (state === "syncing") {
+          dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+        } else {
+          dot.className = "w-2 h-2 rounded-full bg-slate-400";
+        }
+      }
+
+      if (modalBadge) {
+        modalBadge.textContent = text;
+        if (state === "online") {
+          modalBadge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800";
+        } else if (state === "syncing") {
+          modalBadge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800";
+        } else {
+          modalBadge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-slate-200 text-slate-700";
+        }
+      }
+    }
+
+    async function pullFromCloud(silent = false) {
+      const url = getCloudGasUrl();
+      if (!url) {
+        setCloudSyncStatusBadge("offline", "雲端未綁定");
+        return;
+      }
+
+      setCloudSyncStatusBadge("syncing", "同步中...");
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+
+        if (data.status === "success") {
+          // 合併 tasks
+          if (Array.isArray(data.tasks) && data.tasks.length > 0) {
+            data.tasks.forEach(remoteTask => {
+              const idx = appData.tasks.findIndex(t => t.id === remoteTask.id);
+              if (idx >= 0) {
+                appData.tasks[idx] = { ...appData.tasks[idx], ...remoteTask };
+              } else {
+                appData.tasks.push(remoteTask);
+              }
+            });
+          }
+
+          // 合併 swaps
+          if (Array.isArray(data.swaps) && data.swaps.length > 0) {
+            data.swaps.forEach(remoteSwap => {
+              const idx = appData.swaps.findIndex(s => s.id === remoteSwap.id);
+              if (idx >= 0) {
+                appData.swaps[idx] = { ...appData.swaps[idx], ...remoteSwap };
+              } else {
+                appData.swaps.push(remoteSwap);
+              }
+            });
+          }
+
+          const nowStr = new Date().toLocaleTimeString("zh-TW", { hour12: false });
+          setCloudSyncStatusBadge("online", `🟢 已同步 (${nowStr})`);
+
+          const timeEl = document.getElementById("cloudLastSyncTimeText");
+          const countEl = document.getElementById("cloudTasksCountText");
+          if (timeEl) timeEl.textContent = nowStr;
+          if (countEl) countEl.textContent = `${appData.tasks.length} 筆 (雲端已核定)`;
+
+          // 重新整理現行畫面
+          renderScheduleGrid(appData.currentScheduleClass);
+          renderTasksTable();
+          renderReportTable();
+          renderWorkflowUI();
+
+          if (!silent) {
+            showToast(`已成功由 Google 試算表同步 ${data.tasks ? data.tasks.length : 0} 筆排代資料！`);
+          }
+        }
+      } catch (err) {
+        console.warn("GAS Pull Error:", err);
+        setCloudSyncStatusBadge("offline", "連線異常 (使用本機快取)");
+        if (!silent) {
+          showToast("無法連接至 Google 試算表，請檢查網址或權限設定", "⚠️");
+        }
+      }
+    }
+
+    async function pushToCloud(payload, silent = true) {
+      const url = getCloudGasUrl();
+      if (!url) return;
+
+      try {
+        // 使用 text/plain 避免觸發 CORS preflight OPTIONS 阻擋
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+          mode: "no-cors"
+        });
+        const nowStr = new Date().toLocaleTimeString("zh-TW", { hour12: false });
+        setCloudSyncStatusBadge("online", `🟢 已上傳 (${nowStr})`);
+        if (!silent) showToast("雲端試算表更新成功！");
+      } catch (err) {
+        console.warn("GAS Push Error:", err);
+        setCloudSyncStatusBadge("offline", "上傳失敗 (已暫存本機)");
+      }
+    }
+
+    function saveAndTestCloudUrl() {
+      const input = document.getElementById("cloudGasUrlInput");
+      if (!input) return;
+      const url = input.value.trim();
+      if (!url.startsWith("https://script.google.com/macros/s/")) {
+        showToast("網址格式不正確，應以 https://script.google.com/ 開頭", "⚠️");
+        return;
+      }
+      localStorage.setItem(CLOUD_STORAGE_KEY, url);
+      showToast("已儲存網址，正在測試連線...");
+      pullFromCloud(false);
+    }
+
+    function triggerManualCloudPull() {
+      pullFromCloud(false);
+    }
+
+    async function triggerManualCloudPushAll() {
+      const url = getCloudGasUrl();
+      if (!url) {
+        showToast("請先設定並儲存 Google Apps Script 網址", "⚠️");
+        return;
+      }
+      setCloudSyncStatusBadge("syncing", "上傳中...");
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "syncAll",
+            tasks: appData.tasks,
+            swaps: appData.swaps
+          }),
+          mode: "no-cors"
+        });
+        setCloudSyncStatusBadge("online", "🟢 全量上傳完成");
+        showToast("✅ 已成功將本地課務與調課資料整批同步至 Google 試算表！");
+      } catch (err) {
+        showToast("上傳失敗：" + err.message, "⚠️");
+      }
+    }
+
+    // ==========================================
+    // 4. 工具運算函式
+    // ==========================================
+    function parseRocDate(dateStr) {
+      if (!dateStr) dateStr = "2026-10-06";
+      let d;
+      if (dateStr.includes("-")) {
+        const parts = dateStr.split("-");
+        d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      } else if (dateStr.length === 7) {
+        const y = parseInt(dateStr.slice(0, 3), 10) + 1911;
+        const m = parseInt(dateStr.slice(3, 5), 10) - 1;
+        const day = parseInt(dateStr.slice(5, 7), 10);
+        d = new Date(y, m, day);
+      } else {
+        d = new Date();
+      }
+
+      const year = d.getFullYear();
+      const rocYear = year - 1911;
+      const mNum = d.getMonth() + 1;
+      const dNum = d.getDate();
+      const rocStr = `${rocYear}${String(mNum).padStart(2, "0")}${String(dNum).padStart(2, "0")}`;
+      
+      const dayOfWeekMap = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+      const dayNum = d.getDay(); // 0 is Sunday, 1~5 is Mon~Fri
+
+      return {
+        year,
+        rocYear,
+        month: mNum,
+        day: dNum,
+        dayNum: (dayNum === 0 || dayNum === 6) ? 2 : dayNum,
+        dayOfWeek: dayOfWeekMap[dayNum] || "週二",
+        rocStr
+      };
+    }
+
+    function calculateDailyTutorFee(rocDateStr) {
+      const parsed = parseRocDate(rocDateStr);
+      const daysInMonth = new Date(parsed.year, parsed.month, 0).getDate();
+      const base = 364; // 減授鐘點差額基準
+      const allowance = Math.round(4000 / daysInMonth); // 浮動日額
+      return {
+        year: parsed.rocYear,
+        month: parsed.month,
+        daysInMonth,
+        base,
+        allowance,
+        total: base + allowance
+      };
+    }
+
+    function checkClassDailyTutorFeeExceeded(classId, rocDateStr) {
+      const existing = appData.tasks.filter(t => t.date === rocDateStr && t.classId === classId && t.tutorFee > 0);
+      return {
+        exceeded: existing.length > 0,
+        count: existing.length
+      };
+    }
+
+    function calculateTeacherWeeklyLoad(teacherName) {
+      const t = OFFICIAL_TEACHERS.find(x => x.name === teacherName);
+      const overtime = t ? t.overtimeWeekly : 0;
+      const subCount = appData.tasks.filter(x => x.subTeacher === teacherName && x.periodsCount > 0).length;
+      const totalWeeklyLoad = overtime + subCount;
+      return {
+        overtime,
+        subCount,
+        totalWeeklyLoad,
+        limit: 9,
+        isOverLimit: totalWeeklyLoad >= 9
+      };
+    }
+
+    function numberToChineseAmount(n) {
+      if (!n || isNaN(n) || n === 0) return "零元整";
+      const digits = ['零', '壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖'];
+      const units = ['', '拾', '佰', '仟'];
+      let str = "";
+      let s = String(n);
+      for (let i = 0; i < s.length; i++) {
+        let d = parseInt(s[i], 10);
+        let u = units[s.length - 1 - i];
+        str += digits[d] + (d !== 0 ? u : '');
+      }
+      str = str.replace(/零+/g, '零').replace(/零$/, '');
+      return str + "元整";
+    }
+
+    // ==========================================
+    // 5. 課表動態聚合渲染管線 (模組 1)
+    // ==========================================
+    function changeScheduleClass(classId) {
+      if (!classId) classId = "901";
+      appData.currentScheduleClass = classId;
+      const select = document.getElementById("scheduleClassSelect");
+      if (select && select.value !== classId) select.value = classId;
+      renderScheduleGrid(classId);
+      showToast(`已切換檢視 ${classId} 班課表`);
+    }
+
+    function renderScheduleGrid(classId) {
+      if (!classId) classId = appData.currentScheduleClass || "901";
+      appData.currentScheduleClass = classId;
+      const tutorName = CLASS_TUTOR_MAP[classId] || "導師";
+      
+      const titleEl = document.getElementById("scheduleClassTitle");
+      if (titleEl) {
+        titleEl.textContent = `${classId} 班全週課表 (導師：${tutorName})`;
+      }
+
+      const thead = document.getElementById("scheduleTableHead");
+      const tbody = document.getElementById("scheduleTableBody");
+      if (!thead || !tbody) return;
+
+      // 1. 渲染表頭 (帶代導氣泡標註)
+      let headHtml = `
+        <tr class="bg-slate-100 text-slate-700 font-bold">
+          <th class="w-24 py-2">節次 / 時間</th>
+      `;
+
+      SCHEDULE_WEEK_DAYS.forEach(day => {
+        const tutorTask = appData.tasks.find(t => 
+          t.date === day.rocDate && 
+          (t.classId === classId || t.originalTeacher === tutorName) && 
+          (t.tutorFee > 0 || t.period === 0)
+        );
+
+        if (tutorTask) {
+          headHtml += `
+            <th class="w-1/5 bg-amber-50/90 border-b border-amber-300">
+              ${day.label} (${day.dateStr})<br>
+              <div class="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-amber-200 border border-amber-400 text-amber-950 font-bold text-[11px] shadow-sm animate-pulse">
+                🚨 今日代導：${tutorTask.subTeacher} 老師
+              </div>
+              <div class="text-[10px] text-amber-800 font-normal mt-0.5">
+                (原導師：${tutorName} 請假)
+              </div>
+            </th>
+          `;
+        } else {
+          headHtml += `
+            <th class="w-1/5">
+              ${day.label} (${day.dateStr})<br>
+              <span class="text-[11px] font-normal text-slate-500">導師：${tutorName}</span>
+            </th>
+          `;
+        }
+      });
+      headHtml += `</tr>`;
+      thead.innerHTML = headHtml;
+
+      // 2. 渲染表身 (早自修 0 + 第 1 ~ 8 節全時段)
+      let bodyHtml = "";
+
+      // 早自修 (Period 0)
+      bodyHtml += `
+        <tr>
+          <td class="bg-slate-50 font-bold text-slate-600">早自修<br><span class="text-[10px] text-slate-400 font-normal">${PERIOD_TIMES[0]}</span></td>
+      `;
+      SCHEDULE_WEEK_DAYS.forEach(day => {
+        const tutorTask = appData.tasks.find(t => 
+          t.date === day.rocDate && 
+          (t.classId === classId || t.originalTeacher === tutorName) && 
+          (t.tutorFee > 0 || t.period === 0)
+        );
+
+        if (tutorTask) {
+          bodyHtml += `
+            <td class="bg-amber-100/90 border-2 border-amber-400 p-2 text-left">
+              <div class="flex items-center justify-between">
+                <span class="px-1.5 py-0.5 bg-amber-600 text-white text-[10px] rounded font-bold">全日代理導師</span>
+              </div>
+              <div class="text-sm font-black text-amber-950 mt-0.5">${tutorTask.subTeacher} 老師</div>
+              <div class="text-[10px] text-amber-800">📌 晨光常規 / 聯絡簿指導 / 出缺席查核</div>
+            </td>
+          `;
+        } else {
+          const morningActivity = day.dayNum === 3 ? "升旗 / 晨會" : (day.dayNum === 5 ? "週會活動" : "晨讀時間");
+          bodyHtml += `<td class="text-slate-400">${morningActivity}</td>`;
+        }
+      });
+      bodyHtml += `</tr>`;
+
+      // 第 1 ~ 8 節 (含第8節課後輔導)
+      for (let p = 1; p <= 8; p++) {
+        bodyHtml += `
+          <tr>
+            <td class="bg-slate-50 font-bold text-slate-600">
+              第 ${p} 節${p === 8 ? '<br><span class="text-[9px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">課後輔導</span>' : ''}
+              <br><span class="text-[10px] text-slate-400 font-normal">${PERIOD_TIMES[p]}</span>
+            </td>
+        `;
+
+        SCHEDULE_WEEK_DAYS.forEach(day => {
+          let origCourseName = "";
+          let origTeacherName = "";
+
+          // 檢索常態課表
+          Object.entries(MASTER_SCHEDULE_MAP).forEach(([tName, scheduleObj]) => {
+            if (scheduleObj[day.dayNum] && scheduleObj[day.dayNum][p]) {
+              const text = scheduleObj[day.dayNum][p];
+              if (text.startsWith(classId)) {
+                origCourseName = text.replace(classId, "").trim();
+                origTeacherName = tName;
+              }
+            }
+          });
+
+          // 檢索特教抽離並行課 (學701等)
+          const spKey = `學${classId}`;
+          let spCourseName = "";
+          let spTeacherName = "";
+          if (MASTER_SCHEDULE_MAP["鄭宇涵"] && MASTER_SCHEDULE_MAP["鄭宇涵"][day.dayNum] && MASTER_SCHEDULE_MAP["鄭宇涵"][day.dayNum][p]) {
+            const spText = MASTER_SCHEDULE_MAP["鄭宇涵"][day.dayNum][p];
+            if (spText.includes(spKey)) {
+              spCourseName = spText.replace(spKey, "").trim();
+              spTeacherName = "鄭宇涵";
+            }
+          }
+
+          // 檢索排代紀錄 (科目永久鎖定)
+          const subTask = appData.tasks.find(t => 
+            t.date === day.rocDate && 
+            t.classId === classId && 
+            t.period === p
+          );
+
+          // 檢索自辦調課
+          const approvedSwap = appData.swaps.find(s => 
+            s.status === "approved" && 
+            (s.courseA.includes(`${classId}`) || s.courseB.includes(`${classId}`)) &&
+            (s.courseA.includes(`第${p}節`) || s.courseB.includes(`第${p}節`))
+          );
+
+          // 狀態分流 (徹底去金額化)
+          if (spCourseName && origCourseName) {
+            bodyHtml += `
+              <td class="p-1">
+                <div class="grid grid-cols-2 gap-1 h-full">
+                  <div class="bg-blue-50 border border-blue-200 p-1.5 rounded text-left">
+                    <span class="px-1 py-0.2 bg-blue-600 text-white text-[9px] rounded font-bold">原班普通課</span>
+                    <div class="font-bold text-slate-800 text-xs mt-0.5">${origCourseName}</div>
+                    <div class="text-[11px] text-slate-500">${origTeacherName} 老師</div>
+                  </div>
+                  <div class="bg-emerald-50 border border-emerald-300 p-1.5 rounded text-left">
+                    <span class="px-1 py-0.2 bg-emerald-600 text-white text-[9px] rounded font-bold">🌱 特教抽離</span>
+                    <div class="font-bold text-emerald-950 text-xs mt-0.5">${spCourseName}</div>
+                    <div class="text-[11px] text-emerald-700 font-bold">${spTeacherName} 老師</div>
+                  </div>
+                </div>
+              </td>
+            `;
+          } else if (subTask) {
+            const displaySubject = subTask.subject || origCourseName || '課堂授課';
+            bodyHtml += `
+              <td class="p-2 schedule-cell-sub">
+                <div class="flex items-center justify-between">
+                  <span class="bg-orange-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">代課</span>
+                  ${p === 8 ? '<span class="text-[9px] text-amber-800 font-bold bg-amber-100 px-1 rounded">第8節</span>' : ''}
+                </div>
+                <div class="font-bold text-orange-950 text-sm mt-0.5">${displaySubject}</div>
+                <div class="font-extrabold text-orange-900">${subTask.subTeacher} 老師</div>
+                <div class="text-[10px] text-slate-500 border-t border-orange-200 mt-1 pt-0.5">原授課：${subTask.originalTeacher}</div>
+              </td>
+            `;
+          } else if (approvedSwap) {
+            bodyHtml += `
+              <td class="p-2 schedule-cell-swap">
+                <div class="flex items-center justify-between">
+                  <span class="bg-purple-600 text-white text-[10px] font-bold px-1 rounded">自辦互調</span>
+                  <span class="text-purple-700 text-[10px]">已核准</span>
+                </div>
+                <div class="font-bold text-purple-950 text-sm mt-0.5">${origCourseName}</div>
+                <div class="font-extrabold text-purple-900">${approvedSwap.teacherB} 老師</div>
+                <div class="text-[10px] text-purple-600 border-t border-purple-200 mt-1 pt-0.5">原堂互換</div>
+              </td>
+            `;
+          } else if (origCourseName) {
+            bodyHtml += `
+              <td class="p-2">
+                <div class="font-bold text-slate-800 text-sm">${origCourseName}</div>
+                <div class="text-slate-500">${origTeacherName} 老師</div>
+              </td>
+            `;
+          } else {
+            bodyHtml += `<td class="text-slate-300">—</td>`;
+          }
+        });
+
+        bodyHtml += `</tr>`;
+      }
+
+      tbody.innerHTML = bodyHtml;
+    }
+
+    // ==========================================
+    // 6. 排代作業台 (模組 4：Excel 矩陣版)
+    // ==========================================
+    function setRadarViewMode(mode) {
+      appData.radarViewMode = mode;
+      const btnMatrix = document.getElementById("btnRadarViewMatrix");
+      const btnClasses = document.getElementById("btnRadarViewClasses");
+
+      if (mode === "matrix") {
+        btnMatrix.className = "px-3 py-1 rounded bg-white text-blue-700 shadow-sm transition";
+        btnClasses.className = "px-3 py-1 rounded text-slate-600 hover:text-slate-900 transition";
+      } else {
+        btnMatrix.className = "px-3 py-1 rounded text-slate-600 hover:text-slate-900 transition";
+        btnClasses.className = "px-3 py-1 rounded bg-white text-blue-700 shadow-sm transition";
+      }
+      renderRadarWorkspace();
+    }
+
+    function onRadarDateOrTeacherChange() {
+      const dInput = document.getElementById("radarDateInput");
+      const tSelect = document.getElementById("radarAbsentTeacherSelect");
+      if (dInput) appData.radarDate = dInput.value;
+      if (tSelect) appData.radarTeacher = tSelect.value;
+      renderRadarWorkspace();
+    }
+
+    // 連鎖缺代逆向追查演算法
+    function detectCascadingAbsenceConflicts(rocDate) {
+      const absentTeachers = new Set();
+      if (appData.radarTeacher) absentTeachers.add(appData.radarTeacher);
+
+      appData.tasks.forEach(t => {
+        if (t.date === rocDate && t.originalTeacher) {
+          absentTeachers.add(t.originalTeacher);
+        }
+      });
+
+      const brokenTasks = [];
+      appData.tasks.forEach(t => {
+        if (t.date === rocDate && absentTeachers.has(t.subTeacher)) {
+          brokenTasks.push({
+            brokenTask: t,
+            subTeacherWhoIsAbsent: t.subTeacher,
+            originalTeacherWhoNeedsSub: t.originalTeacher,
+            period: t.period,
+            classId: t.classId,
+            classPeriod: t.classPeriod,
+            subject: t.subject || "家政"
+          });
+        }
+      });
+
+      return {
+        absentTeachersList: Array.from(absentTeachers),
+        brokenTasks
+      };
+    }
+
+    function renderRadarWorkspace() {
+      const container = document.getElementById("radarMainContainer");
+      if (!container) return;
+
+      const parsed = parseRocDate(appData.radarDate);
+      const absentTeacher = appData.radarTeacher;
+      const rocDate = parsed.rocStr;
+
+      // 更新代導日額說明
+      const calcFee = calculateDailyTutorFee(rocDate);
+      const hintEl = document.getElementById("radarTutorAllowanceHint");
+      if (hintEl) {
+        hintEl.innerHTML = `💡 <strong>${calcFee.year}年${calcFee.month}月</strong> (全月共 ${calcFee.daysInMonth} 天)：全日代導上限 <strong class="text-amber-950 font-bold">$${calcFee.total} 元整</strong> (減授差額$${calcFee.base} + 導師日額$${calcFee.allowance})`;
+      }
+
+      const cascadeInfo = detectCascadingAbsenceConflicts(rocDate);
+      renderAbsentTeachersTags(cascadeInfo.absentTeachersList, absentTeacher);
+
+      if (appData.radarViewMode === "classes") {
+        renderRadarClassGridView(container, parsed, rocDate, absentTeacher, cascadeInfo);
+      } else {
+        renderRadarTeacherMatrixView(container, parsed, rocDate, absentTeacher, cascadeInfo);
+      }
+    }
+
+    function renderAbsentTeachersTags(absentList, currentSelected) {
+      const tagsContainer = document.getElementById("radarAbsentTagsList");
+      if (!tagsContainer) return;
+      tagsContainer.innerHTML = "";
+
+      absentList.forEach(name => {
+        const isCurrent = (name === currentSelected);
+        const btn = document.createElement("button");
+        btn.onclick = () => {
+          document.getElementById("radarAbsentTeacherSelect").value = name;
+          onRadarDateOrTeacherChange();
+        };
+        btn.className = `px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+          isCurrent 
+            ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-400' 
+            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+        }`;
+        btn.innerHTML = `<span>👨‍🏫 ${name}</span>${isCurrent ? '<span class="text-[10px] bg-amber-800 px-1 rounded">當前排代</span>' : ''}`;
+        tagsContainer.appendChild(btn);
+      });
+    }
+
+    // 視角 1：全校教師排代大矩陣
+    function renderRadarTeacherMatrixView(container, parsed, rocDate, absentTeacher, cascadeInfo) {
+      const dayNum = parsed.dayNum;
+      const absentObj = OFFICIAL_TEACHERS.find(t => t.name === absentTeacher) || {};
+      const absentBaseSchedule = (MASTER_SCHEDULE_MAP[absentTeacher] && MASTER_SCHEDULE_MAP[absentTeacher][dayNum]) || {};
+
+      let html = "";
+
+      // 1. 連鎖缺代警示看板
+      if (cascadeInfo.brokenTasks.length > 0) {
+        html += `
+          <div class="bg-rose-50 border-2 border-rose-500 p-3.5 rounded-xl space-y-2 animate-pulse">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-black text-rose-900 text-sm flex items-center gap-1.5">
+                <span>🚨</span> 連鎖缺代警示：偵測到原排代教師今日亦請假，導致以下課堂【無人代課】！
+              </span>
+              <span class="bg-rose-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">亟需重新指派</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+        `;
+        cascadeInfo.brokenTasks.forEach(bt => {
+          html += `
+            <div class="bg-white p-2.5 rounded-lg border border-rose-300 shadow-sm flex items-center justify-between">
+              <div>
+                <span class="font-bold text-rose-950">${bt.classPeriod} 【科目：${bt.subject}】(原任課：${bt.originalTeacherWhoNeedsSub})</span>
+                <div class="text-[11px] text-rose-700 mt-0.5">
+                  原指派代課：<span class="line-through font-bold">${bt.subTeacherWhoIsAbsent} 老師</span> ➔ 目前<strong>無人授課</strong>！
+                </div>
+              </div>
+              <button onclick="quickFocusOrphanedTask('${bt.originalTeacherWhoNeedsSub}')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2.5 py-1 rounded text-xs transition shadow-sm">
+                ⚡ 立即重新排代 (${bt.subject})
+              </button>
+            </div>
+          `;
+        });
+        html += `</div></div>`;
+      }
+
+      // 大矩陣表格
+      html += `
+        <div class="overflow-x-auto border border-slate-300 rounded-xl">
+          <table class="excel-table w-full text-xs min-w-[980px]">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 font-bold">
+                <th class="w-24">教師姓名</th>
+                <th class="w-20">領域/職稱</th>
+                <th class="w-24">早自修<br><span class="text-[10px] text-slate-400 font-normal">07:30-08:15</span></th>
+                <th class="w-24">第 1 節<br><span class="text-[10px] text-slate-400 font-normal">08:25-09:10</span></th>
+                <th class="w-24">第 2 節<br><span class="text-[10px] text-slate-400 font-normal">09:20-10:05</span></th>
+                <th class="w-24">第 3 節<br><span class="text-[10px] text-slate-400 font-normal">10:15-11:00</span></th>
+                <th class="w-24">第 4 節<br><span class="text-[10px] text-slate-400 font-normal">11:10-11:55</span></th>
+                <th class="w-24">第 5 節<br><span class="text-[10px] text-slate-400 font-normal">13:10-13:55</span></th>
+                <th class="w-24">第 6 節<br><span class="text-[10px] text-slate-400 font-normal">14:05-14:50</span></th>
+                <th class="w-24">第 7 節<br><span class="text-[10px] text-slate-400 font-normal">15:00-15:45</span></th>
+                <th class="w-24 bg-amber-50">第 8 節<br><span class="text-[10px] text-amber-800 font-bold">16:00-16:45<br>(課後輔導)</span></th>
+                <th class="w-20">今日授課</th>
+                <th class="w-20">本週兼代</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      // 置頂請假同仁列
+      html += `<tr class="bg-amber-100/90 font-bold border-b-2 border-amber-400">`;
+      html += `
+        <td class="p-2 text-amber-950 font-black text-sm bg-amber-200/80">
+          🚨 ${absentTeacher}<br><span class="text-[10px] text-amber-800 font-normal">[當前請假同仁]</span>
+        </td>
+        <td class="text-amber-900">${absentObj.subject || '任教'}</td>
+      `;
+
+      let absentDayPeriodsCount = 0;
+      for (let p = 0; p <= 8; p++) {
+        const hasRegularClass = absentBaseSchedule[p];
+        const acceptedSubTask = appData.tasks.find(t => t.date === rocDate && t.subTeacher === absentTeacher && t.period === p);
+        const hasClass = acceptedSubTask ? `${acceptedSubTask.classId} ${acceptedSubTask.subject || '家政'} (原:${acceptedSubTask.originalTeacher})` : hasRegularClass;
+        const targetOrigTeacher = acceptedSubTask ? acceptedSubTask.originalTeacher : absentTeacher;
+
+        if (hasClass) {
+          absentDayPeriodsCount++;
+          const subTask = appData.tasks.find(t => t.date === rocDate && t.originalTeacher === targetOrigTeacher && t.period === p);
+          const isSubTeacherAbsent = subTask && cascadeInfo.absentTeachersList.includes(subTask.subTeacher) && subTask.subTeacher !== absentTeacher;
+
+          if (subTask && isSubTeacherAbsent) {
+            html += `
+              <td class="bg-rose-100 border-2 border-rose-500 p-1.5 text-center">
+                <span class="text-[9px] bg-rose-600 text-white px-1.5 py-0.2 rounded font-bold animate-bounce">🚨 連鎖缺代</span>
+                <div class="font-extrabold text-rose-950 text-xs mt-0.5">${hasClass}</div>
+                <div class="text-[10px] text-rose-700 line-through">原代：${subTask.subTeacher}</div>
+              </td>
+            `;
+          } else if (subTask && subTask.subTeacher !== absentTeacher) {
+            html += `
+              <td class="bg-emerald-100 border-2 border-emerald-500 p-1.5 text-center">
+                <span class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">已排代課</span>
+                <div class="font-extrabold text-emerald-950 text-xs mt-0.5">${hasClass}</div>
+                <div class="text-[11px] text-emerald-800 font-black">👤 ${subTask.subTeacher}</div>
+                <button onclick="cancelRadarDispatch('${subTask.id}')" class="mt-1 text-[10px] text-rose-700 hover:underline">撤銷</button>
+              </td>
+            `;
+          } else {
+            html += `
+              <td class="bg-orange-100 border-2 border-orange-500 p-1.5 text-center">
+                <span class="text-[9px] bg-orange-600 text-white px-1.5 py-0.2 rounded font-bold animate-pulse">待排代課</span>
+                <div class="font-black text-orange-950 text-xs mt-0.5">${hasClass}</div>
+                <div class="text-[10px] text-orange-800">請由下方點擊指派</div>
+              </td>
+            `;
+          }
+        } else {
+          html += `<td class="text-slate-400 bg-amber-50/40">—</td>`;
+        }
+      }
+      html += `<td class="text-amber-900 font-bold">${absentDayPeriodsCount} 節</td><td class="text-amber-900 font-mono-code">—</td></tr>`;
+
+      // 候選教師列
+      OFFICIAL_TEACHERS.forEach(t => {
+        if (t.name === absentTeacher || t.name === "管理人") return;
+
+        const isCandidateAlsoAbsent = cascadeInfo.absentTeachersList.includes(t.name);
+        const tSchedule = (MASTER_SCHEDULE_MAP[t.name] && MASTER_SCHEDULE_MAP[t.name][dayNum]) || {};
+        const load = calculateTeacherWeeklyLoad(t.name);
+        let dailyCount = 0;
+
+        let rowCellsHTML = "";
+        for (let p = 0; p <= 8; p++) {
+          const course = tSchedule[p];
+          if (course && p > 0) dailyCount++;
+
+          const existingSub = appData.tasks.find(x => x.date === rocDate && x.subTeacher === t.name && x.period === p);
+          const acceptedSubTask = appData.tasks.find(task => task.date === rocDate && task.subTeacher === absentTeacher && task.period === p);
+          const needSubCourse = acceptedSubTask ? `${acceptedSubTask.classId} ${acceptedSubTask.subject || '家政'}` : absentBaseSchedule[p];
+          const rootOrigTeacher = acceptedSubTask ? acceptedSubTask.originalTeacher : absentTeacher;
+
+          if (isCandidateAlsoAbsent) {
+            rowCellsHTML += `
+              <td class="bg-slate-100/80 p-1 text-center text-slate-400 border border-slate-200">
+                <span class="text-[9px] text-rose-500 block font-bold">請假中</span>
+                <span class="text-[10px] line-through">${course || '空堂'}</span>
+              </td>
+            `;
+          } else if (existingSub) {
+            dailyCount++;
+            rowCellsHTML += `
+              <td class="bg-emerald-100/90 border border-emerald-400 p-1.5 text-center">
+                <span class="text-[9px] bg-emerald-700 text-white px-1 py-0.2 rounded font-bold">代課中</span>
+                <div class="font-bold text-emerald-950 text-[11px] mt-0.5">${existingSub.classPeriod} (${existingSub.subject || '代課'})</div>
+                <button onclick="cancelRadarDispatch('${existingSub.id}')" class="text-[10px] text-rose-600 hover:text-rose-800 underline font-bold mt-0.5">撤銷</button>
+              </td>
+            `;
+          } else if (course) {
+            rowCellsHTML += `
+              <td class="bg-slate-100 p-1.5 text-center text-slate-700">
+                <strong class="text-xs block text-slate-800">${course}</strong>
+                <span class="text-[10px] text-slate-400">常態排課</span>
+              </td>
+            `;
+          } else if (needSubCourse) {
+            rowCellsHTML += `
+              <td class="bg-blue-50/50 border border-blue-300 p-1 text-center hover:bg-blue-100/60 transition">
+                <button onclick="executeDirectCellDispatch('${t.name}', ${p}, '${needSubCourse}', '${rootOrigTeacher}')" class="px-2 py-1 rounded text-[11px] shadow-sm transition font-bold bg-blue-600 hover:bg-blue-700 text-white w-full">
+                  ➕ 代第${p}節
+                </button>
+              </td>
+            `;
+          } else {
+            rowCellsHTML += `<td class="text-slate-300 text-center">—</td>`;
+          }
+        }
+
+        html += `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-200 ${isCandidateAlsoAbsent ? 'opacity-60 bg-rose-50/20' : ''}">
+            <td class="p-2 font-bold text-slate-900 font-sans text-center bg-slate-50">
+              ${t.name}
+              ${isCandidateAlsoAbsent ? '<span class="text-[9px] block text-rose-600 font-bold">🚫 今日請假中</span>' : ''}
+            </td>
+            <td class="text-slate-500 text-center">${t.subject}</td>
+            ${rowCellsHTML}
+            <td class="font-bold text-center text-slate-800">${dailyCount} 節</td>
+            <td class="font-mono-code font-bold text-center ${load.isOverLimit ? 'text-rose-600 bg-rose-50' : 'text-blue-700'}">
+              ${load.totalWeeklyLoad} / ${load.limit}
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table></div>`;
+      container.innerHTML = html;
+    }
+
+    // 視角 2：全校四班今日日課表
+    function renderRadarClassGridView(container, parsed, rocDate, absentTeacher, cascadeInfo) {
+      const dayNum = parsed.dayNum;
+      const classes = ["701", "801", "901", "902"];
+      const periodNames = ["早自修", "第 1 節", "第 2 節", "第 3 節", "第 4 節", "第 5 節", "第 6 節", "第 7 節", "第 8 節"];
+
+      let html = `
+        <div class="overflow-x-auto border border-slate-300 rounded-xl">
+          <table class="excel-table w-full text-xs min-w-[760px]">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 font-bold">
+                <th class="w-24">節次 / 時間</th>
+                <th class="w-1/4">701 班<br><span class="text-[10px] text-slate-500 font-normal">導師：阮建安</span></th>
+                <th class="w-1/4">801 班<br><span class="text-[10px] text-slate-500 font-normal">導師：蔡明振</span></th>
+                <th class="w-1/4">901 班<br><span class="text-[10px] text-slate-500 font-normal">導師：張碧菁</span></th>
+                <th class="w-1/4">902 班<br><span class="text-[10px] text-slate-500 font-normal">導師：林𡶙鋌</span></th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      for (let p = 0; p <= 8; p++) {
+        html += `<tr><td class="bg-slate-50 font-bold text-slate-700">${periodNames[p]}</td>`;
+        classes.forEach(cId => {
+          let foundCourse = "—";
+          let foundTeacher = "";
+
+          Object.entries(MASTER_SCHEDULE_MAP).forEach(([tName, daysMap]) => {
+            if (daysMap[dayNum] && daysMap[dayNum][p]) {
+              const text = daysMap[dayNum][p];
+              if (text.includes(cId)) {
+                foundCourse = text.replace(cId, "").trim();
+                foundTeacher = tName;
+              }
+            }
+          });
+
+          const subTask = appData.tasks.find(t => t.date === rocDate && t.classId === cId && t.period === p);
+
+          if (subTask) {
+            html += `
+              <td class="schedule-cell-sub p-2">
+                <span class="bg-orange-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded">代課</span>
+                <div class="font-bold text-orange-950 text-sm mt-0.5">${subTask.subject || foundCourse}</div>
+                <div class="font-extrabold text-orange-900">${subTask.subTeacher} 老師</div>
+              </td>
+            `;
+          } else if (foundTeacher === absentTeacher) {
+            html += `
+              <td class="bg-amber-100 border-2 border-amber-400 p-2 text-center">
+                <span class="bg-amber-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded animate-pulse">待代課</span>
+                <div class="font-black text-amber-950 text-sm mt-0.5">${foundCourse}</div>
+                <div class="text-[10px] text-amber-800 font-bold">請假：${foundTeacher} 老師</div>
+              </td>
+            `;
+          } else if (foundTeacher) {
+            html += `
+              <td class="p-2 text-center">
+                <div class="font-bold text-slate-800 text-sm">${foundCourse}</div>
+                <div class="text-slate-500">${foundTeacher} 老師</div>
+              </td>
+            `;
+          } else {
+            html += `<td class="text-slate-300 text-center">—</td>`;
+          }
+        });
+        html += `</tr>`;
+      }
+
+      html += `</tbody></table></div>`;
+      container.innerHTML = html;
+    }
+
+    function quickFocusOrphanedTask(teacherName) {
+      document.getElementById("radarAbsentTeacherSelect").value = teacherName;
+      onRadarDateOrTeacherChange();
+      showToast(`已切換至【${teacherName} 老師】，請於下方點選空堂教師重新補位！`, "⚡");
+    }
+
+    function executeDirectCellDispatch(subTeacher, period, courseText, origTeacher) {
+      const parsed = parseRocDate(appData.radarDate);
+      const rocDate = parsed.rocStr;
+      const docNo = document.getElementById("radarDocNoInput").value.trim() || "115年9月2日府教課二字第1152442203號";
+      const reason = document.getElementById("radarReasonInput").value.trim() || "公假派代";
+      const isFullDayTutorChecked = document.getElementById("radarIsFullDayTutor").checked;
+
+      let classId = "801";
+      if (courseText.includes("701")) classId = "701";
+      else if (courseText.includes("801")) classId = "801";
+      else if (courseText.includes("901")) classId = "901";
+      else if (courseText.includes("902")) classId = "902";
+
+      let subject = "課堂授課";
+      if (courseText.includes("家政")) subject = "家政";
+      else if (courseText.includes("國文")) subject = "國文";
+      else if (courseText.includes("英語")) subject = "英語";
+      else if (courseText.includes("數學")) subject = "數學";
+      else if (courseText.includes("理化") || courseText.includes("自然")) subject = "自然";
+      else if (courseText.includes("社會")) subject = "社會";
+      else if (courseText.includes("綜合")) subject = "綜合";
+      else if (courseText.includes("體育") || courseText.includes("健體")) subject = "體育";
+      else if (courseText.includes("視覺藝術")) subject = "視覺藝術";
+      else if (courseText.includes("生活科技")) subject = "生活科技";
+
+      const subObj = OFFICIAL_TEACHERS.find(t => t.name === subTeacher) || {};
+      const isOrigTutor = (origTeacher === "蔡明振" || origTeacher === "阮建安" || origTeacher === "張碧菁" || origTeacher === "林𡶙鋌");
+      const isSubQualified = !!subObj.isSubTutorQualified;
+
+      let tutorFee = 0;
+      if (isFullDayTutorChecked && isOrigTutor && isSubQualified) {
+        const capCheck = checkClassDailyTutorFeeExceeded(classId, rocDate);
+        if (!capCheck.exceeded) {
+          const calc = calculateDailyTutorFee(rocDate);
+          tutorFee = calc.total;
+        }
+      }
+
+      const rate = period === 8 ? 450 : 455;
+      const periodsCount = 1;
+      const amount = (periodsCount * rate) + tutorFee;
+
+      const existingTaskIdx = appData.tasks.findIndex(t => t.date === rocDate && t.originalTeacher === origTeacher && t.period === period);
+
+      const newTask = {
+        id: existingTaskIdx >= 0 ? appData.tasks[existingTaskIdx].id : `TASK_${rocDate}_${classId}_${period}_${Date.now().toString().slice(-4)}`,
+        subTeacher: subTeacher,
+        title: subObj.title || "教師",
+        docNo: docNo,
+        date: rocDate,
+        dayOfWeek: parsed.dayOfWeek,
+        classPeriod: `${classId} 第${period}節`,
+        classId: classId,
+        period: period,
+        subject: subject,
+        courseType: period === 8 ? "afterSchool" : "regular",
+        periodsCount: periodsCount,
+        rate: rate,
+        tutorFee: tutorFee,
+        amount: amount,
+        originalTeacher: origTeacher,
+        reason: reason,
+        note: (tutorFee > 0 ? "兼代導" : "排代")
+      };
+
+      upsertTask(newTask);
+      renderRadarWorkspace();
+      renderTasksTable();
+      renderReportTable();
+
+      showToast(`✅ 即時排代成功！已指派 ${subTeacher} 老師代授 ${classId} 第${period}節 ${subject} (原授課：${origTeacher})`);
+    }
+
+    function cancelRadarDispatch(taskId) {
+      deleteTaskRecord(taskId);
+      renderRadarWorkspace();
+      renderScheduleGrid(appData.currentScheduleClass);
+    }
+
+    // ==========================================
+    // 7. 清冊 (模組 2)、月結 (模組 5) 與工作流 (模組 3)
+    // ==========================================
+    function upsertTask(taskObj) {
+      const idx = appData.tasks.findIndex(t => t.id === taskObj.id);
+      if (idx >= 0) {
+        appData.tasks[idx] = { ...appData.tasks[idx], ...taskObj };
+      } else {
+        appData.tasks.unshift(taskObj);
+      }
+      renderScheduleGrid(appData.currentScheduleClass);
+
+      // 自動增量推送到 Google 試算表
+      pushToCloud({
+        action: "upsertTask",
+        task: taskObj
+      }, true);
+    }
+
+    function deleteTaskRecord(taskId) {
+      const idx = appData.tasks.findIndex(t => t.id === taskId);
+      if (idx >= 0) {
+        const deleted = appData.tasks.splice(idx, 1)[0];
+        renderTasksTable();
+        renderReportTable();
+        renderRadarWorkspace();
+        renderScheduleGrid(appData.currentScheduleClass);
+
+        // 自動推播刪除到 Google 試算表
+        pushToCloud({
+          action: "deleteTask",
+          taskId: taskId
+        }, true);
+
+        showToast(`🗑️ 已銷假刪除代課紀錄 (${deleted.subTeacher} ${deleted.classPeriod})，課表已同步還原！`);
+      }
+    }
+
+    function renderTasksTable() {
+      const tbody = document.getElementById("tasksTableBody");
+      const titleEl = document.getElementById("tasksViewTitle");
+      const subTitleEl = document.getElementById("tasksViewSubtitle");
+      const adminBtns = document.getElementById("tasksAdminButtons");
+      const teacherBadge = document.getElementById("tasksTeacherBadge");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      if (appData.currentRole === "teacher") {
+        if (titleEl) titleEl.innerHTML = `<span>📑</span> 個人代課與受代明細清冊 (${appData.currentUser} 老師)`;
+        if (subTitleEl) subTitleEl.textContent = `依校園個人資料保護原則：僅列出與【${appData.currentUser} 老師】相關之代課、受代與代導紀錄。`;
+        if (adminBtns) adminBtns.classList.add("hidden");
+        if (teacherBadge) teacherBadge.classList.remove("hidden");
+      } else {
+        if (titleEl) titleEl.innerHTML = `<span>📑</span> 標準 13 欄公課排代與代導總冊 (全校總覽)`;
+        if (subTitleEl) subTitleEl.textContent = `每列最多 1 堂 (0或1節) • 民國 7 碼純數字 (1151006) • 權威姓名唯一鍵：林𡶙鋌 • 銷假即時同步還原課表`;
+        if (adminBtns) adminBtns.classList.remove("hidden");
+        if (teacherBadge) teacherBadge.classList.add("hidden");
+      }
+
+      let displayTasks = appData.tasks;
+      if (appData.currentRole === "teacher") {
+        displayTasks = appData.tasks.filter(t => 
+          t.subTeacher === appData.currentUser || 
+          t.originalTeacher === appData.currentUser
+        );
+      }
+
+      if (displayTasks.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="14" class="p-8 text-center text-slate-400">
+              ${appData.currentRole === 'teacher' ? `目前無任何與【${appData.currentUser} 老師】相關之公課排代或代導紀錄。` : '目前總冊尚無任何排代紀錄。'}
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      displayTasks.forEach(t => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 transition";
+        const isSelfPaid = (t.amount === 0 || t.courseType === "selfPaid");
+
+        tr.innerHTML = `
+          <td class="p-2.5 font-bold text-slate-900 font-sans">${t.subTeacher}</td>
+          <td class="p-2.5 text-slate-500 font-sans">${t.title}</td>
+          <td class="p-2.5 text-blue-700 text-[10px] font-mono-code">${t.docNo}</td>
+          <td class="p-2.5 font-bold text-slate-800">${t.date}</td>
+          <td class="p-2.5 font-sans">${t.dayOfWeek}</td>
+          <td class="p-2.5 font-bold text-blue-900 font-sans">${t.classPeriod}</td>
+          <td class="p-2.5 text-center font-bold text-slate-800">${t.periodsCount}</td>
+          <td class="p-2.5 text-right">$${t.rate}</td>
+          <td class="p-2.5 text-right ${t.tutorFee > 0 ? 'font-bold text-amber-700' : 'text-slate-400'}">$${t.tutorFee}</td>
+          <td class="p-2.5 text-right font-bold ${isSelfPaid ? 'text-slate-500 line-through' : 'text-emerald-700'}">
+            $${t.amount} ${isSelfPaid ? '<span class="text-[9px] font-sans block text-amber-700 no-underline">(自費免核)</span>' : ''}
+          </td>
+          <td class="p-2.5 font-sans font-bold text-slate-900">${t.originalTeacher}</td>
+          <td class="p-2.5 font-sans text-slate-600">${t.reason}</td>
+          <td class="p-2.5 font-sans ${t.tutorFee > 0 ? 'text-amber-800 font-bold' : 'text-slate-400'}">${t.note}</td>
+          <td class="p-2.5 text-center">
+            ${appData.currentRole === 'admin' ? `
+              <button onclick="deleteTaskRecord('${t.id}')" class="text-rose-600 hover:text-rose-800 font-bold font-sans text-[11px] px-1.5 py-0.5 rounded hover:bg-rose-50 transition" title="銷假刪除並復原課表">
+                銷假刪除
+              </button>
+            ` : `<span class="text-slate-400 text-[10px]">—</span>`}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function setReportFilter(filterType) {
+      appData.reportFilter = filterType;
+      const bAll = document.getElementById("rfAll");
+      const bReg = document.getElementById("rfReg");
+      const bAfter = document.getElementById("rfAfter");
+
+      [bAll, bReg, bAfter].forEach(b => {
+        if (b) b.className = "px-2.5 py-1 rounded font-medium text-slate-600 hover:text-slate-900";
+      });
+
+      if (filterType === "all" && bAll) bAll.className = "px-2.5 py-1 rounded font-bold bg-white text-blue-700 shadow-sm";
+      else if (filterType === "regular" && bReg) bReg.className = "px-2.5 py-1 rounded font-bold bg-white text-blue-700 shadow-sm";
+      else if (filterType === "afterSchool" && bAfter) bAfter.className = "px-2.5 py-1 rounded font-bold bg-white text-blue-700 shadow-sm";
+
+      renderReportTable();
+    }
+
+    function renderReportTable() {
+      const tbody = document.getElementById("reportTableBody");
+      const totalChineseEl = document.getElementById("reportChineseTotal");
+      const subTitleEl = document.getElementById("reportSubTitle");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      let filtered = appData.tasks.filter(t => t.amount > 0);
+
+      if (appData.reportFilter === "regular") {
+        filtered = filtered.filter(t => t.courseType !== "afterSchool" && t.period !== 8);
+        if (subTitleEl) subTitleEl.textContent = "115 學年度第 1 學期 正課公差排代鐘點費核銷總冊 (1~7節專用)";
+      } else if (appData.reportFilter === "afterSchool") {
+        filtered = filtered.filter(t => t.courseType === "afterSchool" || t.period === 8);
+        if (subTitleEl) subTitleEl.textContent = "115 學年度第 1 學期 第 8 節課後輔導鐘點費核銷總冊 (課輔專戶)";
+      } else {
+        if (subTitleEl) subTitleEl.textContent = "115 學年度第 1 學期 公課排代與代導費核銷總冊 (全科目彙總)";
+      }
+
+      let sumPeriods = 0;
+      let sumTutor = 0;
+      let sumAmount = 0;
+
+      filtered.forEach(t => {
+        sumPeriods += (t.periodsCount || 0);
+        sumTutor += (t.tutorFee || 0);
+        sumAmount += (t.amount || 0);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="border border-slate-800 p-1.5 text-center font-bold">${t.subTeacher}</td>
+          <td class="border border-slate-800 p-1.5 text-center">${t.title}</td>
+          <td class="border border-slate-800 p-1.5">${t.docNo}</td>
+          <td class="border border-slate-800 p-1.5 text-center font-mono-code">${t.date}</td>
+          <td class="border border-slate-800 p-1.5 text-center">${t.periodsCount}</td>
+          <td class="border border-slate-800 p-1.5 text-center">$${t.rate}</td>
+          <td class="border border-slate-800 p-1.5 text-center ${t.tutorFee > 0 ? 'font-bold' : ''}">$${t.tutorFee}</td>
+          <td class="border border-slate-800 p-1.5 text-right font-bold">$${t.amount}</td>
+          <td class="border border-slate-800 p-1.5 text-center font-bold">${t.originalTeacher}</td>
+          <td class="border border-slate-800 p-1.5">${t.reason}</td>
+          <td class="border border-slate-800 p-1.5">${t.classPeriod}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const trSum = document.createElement("tr");
+      trSum.className = "bg-slate-50 font-bold";
+      trSum.innerHTML = `
+        <td colspan="4" class="border border-slate-800 p-2 text-right">合計 (${filtered.length} 筆)：</td>
+        <td class="border border-slate-800 p-2 text-center text-blue-800">${sumPeriods} 節</td>
+        <td class="border border-slate-800 p-2 text-center">—</td>
+        <td class="border border-slate-800 p-2 text-center text-amber-800">$${sumTutor.toLocaleString()}</td>
+        <td class="border border-slate-800 p-2 text-right text-rose-800 font-extrabold">$${sumAmount.toLocaleString()}</td>
+        <td colspan="3" class="border border-slate-800 p-2"></td>
+      `;
+      tbody.appendChild(trSum);
+
+      if (totalChineseEl) {
+        totalChineseEl.textContent = numberToChineseAmount(sumAmount);
+      }
+    }
+
+    function renderWorkflowUI() {
+      const container = document.getElementById("workflowCardsContainer");
+      if (!container) return;
+      container.innerHTML = "";
+
+      appData.swaps.forEach(s => {
+        const isApproved = s.status === "approved";
+        const isRevoked = s.status === "revoked";
+
+        const card = document.createElement("div");
+        card.className = `bg-white p-4 rounded-xl shadow-sm border-l-4 ${isApproved ? 'border-l-emerald-500' : (isRevoked ? 'border-l-slate-400 opacity-70' : 'border-l-purple-500')} border border-slate-200 space-y-3`;
+
+        let statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800">⏳ 等待受調同仁確認</span>`;
+        if (isApproved) {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">🛡️ 教務組長已核准生效</span>`;
+        } else if (isRevoked) {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-700">↩️ 已撤銷還原</span>`;
+        }
+
+        let actionButtons = "";
+        if (s.status === "pending_peer") {
+          actionButtons = `
+            <button onclick="approveSwapByPeer('${s.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded transition font-medium">✅ 同意互調</button>
+            <button onclick="rejectSwap('${s.id}')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-3 py-1 rounded transition">❌ 婉拒</button>
+          `;
+        } else if (s.status === "pending_admin") {
+          actionButtons = `
+            <button onclick="approveSwapByAdmin('${s.id}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded transition font-bold">🛡️ 組長正式核准</button>
+            <button onclick="rejectSwap('${s.id}')" class="bg-rose-100 text-rose-800 text-xs px-3 py-1 rounded transition font-medium">退回</button>
+          `;
+        } else if (isApproved) {
+          actionButtons = `
+            <button onclick="revokeApprovedSwap('${s.id}')" class="bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs px-3 py-1 rounded transition font-bold border border-rose-300">
+              ↩️ 撤銷核准並還原課表
+            </button>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-mono-code text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded font-bold border border-purple-200">${s.id}</span>
+            ${statusBadge}
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2 rounded">
+            <div>
+              <div class="text-slate-400 font-medium">申請人</div>
+              <div class="text-slate-900 font-bold text-sm">${s.teacherA} 老師</div>
+              <div class="text-blue-700 mt-0.5">${s.courseA}</div>
+            </div>
+            <div>
+              <div class="text-slate-400 font-medium">受調同仁</div>
+              <div class="text-slate-900 font-bold text-sm">${s.teacherB} 老師</div>
+              <div class="text-emerald-700 mt-0.5">${s.courseB}</div>
+            </div>
+          </div>
+          <div class="text-xs text-slate-600"><strong>調課事由：</strong>${s.reason}</div>
+          <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            ${actionButtons}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function approveSwapByPeer(swapId) {
+      const s = appData.swaps.find(x => x.id === swapId);
+      if (s) {
+        s.status = "pending_admin";
+        renderWorkflowUI();
+        pushToCloud({ action: "upsertSwap", swap: s }, true);
+        showToast('受調同仁已同意！已呈送教務組長進行核准');
+      }
+    }
+
+    function approveSwapByAdmin(swapId) {
+      const s = appData.swaps.find(x => x.id === swapId);
+      if (s) {
+        s.status = "approved";
+        renderWorkflowUI();
+        renderScheduleGrid(appData.currentScheduleClass);
+        pushToCloud({ action: "upsertSwap", swap: s }, true);
+        showToast('🛡️ 教務組長已核准生效！課表已同步更新');
+      }
+    }
+
+    function revokeApprovedSwap(swapId) {
+      const s = appData.swaps.find(x => x.id === swapId);
+      if (s) {
+        s.status = "revoked";
+        renderWorkflowUI();
+        renderScheduleGrid(appData.currentScheduleClass);
+        pushToCloud({ action: "upsertSwap", swap: s }, true);
+        showToast('↩️ 已撤銷調課核准！雙方課堂已復原回原始排課');
+      }
+    }
+
+    function rejectSwap(swapId) {
+      const s = appData.swaps.find(x => x.id === swapId);
+      if (s) {
+        s.status = "rejected";
+        renderWorkflowUI();
+        showToast('已婉拒此調課申請');
+      }
+    }
+
+    function renderRosterTableData() {
+      const tbody = document.getElementById("rosterTableBody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      OFFICIAL_TEACHERS.forEach(t => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50";
+        tr.innerHTML = `
+          <td class="p-2.5 font-mono-code font-bold text-blue-700">${t.id}</td>
+          <td class="p-2.5">${t.dept}</td>
+          <td class="p-2.5 font-medium">${t.title}</td>
+          <td class="p-2.5 font-bold text-slate-900">${t.name}</td>
+          <td class="p-2.5">${t.subject}</td>
+          <td class="p-2.5 font-bold text-amber-700">${t.overtimeWeekly > 0 ? '每週 ' + t.overtimeWeekly + ' 節' : '0 節'}</td>
+          <td class="p-2.5 ${t.isSubTutorQualified ? 'text-emerald-700 font-bold' : 'text-slate-400'}">${t.isSubTutorQualified ? '✅ 具資格' : '否'}</td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] ${t.role === 'admin' ? 'bg-rose-100 text-rose-800 font-bold' : 'bg-blue-100 text-blue-800'}">${t.role === 'admin' ? '最高管理員' : '一般教師'}</span></td>
+          <td class="p-2.5 font-mono-code text-slate-400">••••••••</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ==========================================
+    // 8. 路由守衛與身分切換狀態機 (FIG 02)
+    // ==========================================
+    function handleRoleSwitcherChange(val) {
+      const parts = val.split(":");
+      const role = parts[0];
+      const targetUser = parts[1] || null;
+      switchRole(role, targetUser);
+    }
+
+    function switchTab(tabId) {
+      if (appData.currentRole === "class" && tabId !== "tabSchedule") {
+        showToast("📺 教室端視角已鎖定課表，無法存取行政模組", "⚠️");
+        return;
+      }
+
+      if (appData.currentRole === "teacher" && (tabId === "tabRadar" || tabId === "tabReports" || tabId === "tabRoster")) {
+        showToast("🔒 權限受限：此模組為教務組長行政專用，一般同仁無權限存取", "⚠️");
+        return;
+      }
+
+      document.querySelectorAll(".tab-content").forEach(el => {
+        el.classList.add("hidden");
+        el.classList.remove("block");
+      });
+
+      const target = document.getElementById(tabId);
+      if (target) {
+        target.classList.remove("hidden");
+        target.classList.add("block");
+      }
+
+      const navBtnMap = {
+        tabSchedule: "navSchedule",
+        tabTasks: "navTasks",
+        tabWorkflow: "navWorkflow",
+        tabRadar: "navRadar",
+        tabReports: "navReports",
+        tabRoster: "navRoster"
+      };
+
+      Object.entries(navBtnMap).forEach(([tId, btnId]) => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        if (tId === tabId) {
+          btn.className = "tab-btn px-4 py-2 font-bold border-b-2 border-blue-400 text-white flex items-center gap-1.5 transition";
+        } else {
+          btn.className = "tab-btn px-4 py-2 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-1.5 transition";
+        }
+      });
+
+      if (tabId === "tabSchedule") renderScheduleGrid(appData.currentScheduleClass);
+      if (tabId === "tabTasks") renderTasksTable();
+      if (tabId === "tabWorkflow") renderWorkflowUI();
+      if (tabId === "tabRadar") {
+        const dInput = document.getElementById("radarDateInput");
+        const tSelect = document.getElementById("radarAbsentTeacherSelect");
+        if (dInput && appData.radarDate) dInput.value = appData.radarDate;
+        if (tSelect && appData.radarTeacher) tSelect.value = appData.radarTeacher;
+        renderRadarWorkspace();
+      }
+      if (tabId === "tabReports") renderReportTable();
+    }
+
+    function switchRole(role, specificUser = null, specificClass = null) {
+      appData.currentRole = role;
+      const badge = document.getElementById("headerRoleBadge");
+      const banner = document.getElementById("classroomBanner");
+      const reviewPanel = document.getElementById("reviewPanel");
+      const classSelect = document.getElementById("scheduleClassSelect");
+
+      const adminOnlyNavIds = ["navRadar", "navReports", "navRoster"];
+      const teacherVisibleNavIds = ["navSchedule", "navTasks", "navWorkflow"];
+
+      if (role === "class") {
+        const cId = specificClass || (specificUser ? specificUser.replace("CLASS_", "") : "701");
+        appData.currentUser = `CLASS_${cId}`;
+        appData.currentScheduleClass = cId;
+
+        if (badge) {
+          badge.className = "px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+          badge.textContent = `📺 ${cId} 班教室電視端`;
+        }
+        if (banner) banner.classList.remove("hidden");
+        if (reviewPanel) reviewPanel.classList.add("hidden");
+
+        ["navTasks", "navWorkflow", "navRadar", "navReports", "navRoster"].forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.classList.add("hidden");
+        });
+
+        if (classSelect) {
+          classSelect.value = cId;
+          classSelect.disabled = true;
+        }
+
+        switchTab("tabSchedule");
+        renderScheduleGrid(cId);
+        showToast(`已切換為 ${cId} 教室電視端，硬鎖純淨課表輪播`, "📺");
+
+      } else if (role === "teacher") {
+        const tName = specificUser || "蔡明振";
+        appData.currentUser = tName;
+        
+        let defaultClass = "701";
+        Object.entries(CLASS_TUTOR_MAP).forEach(([cId, name]) => {
+          if (name === tName) defaultClass = cId;
+        });
+        appData.currentScheduleClass = defaultClass;
+
+        const tObj = OFFICIAL_TEACHERS.find(t => t.name === tName);
+        const titleStr = tObj ? tObj.title : "教師";
+
+        if (badge) {
+          badge.className = "px-2 py-0.5 rounded text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30";
+          badge.textContent = `👨‍🏫 ${tName} [${titleStr}]`;
+        }
+        if (banner) banner.classList.add("hidden");
+        if (reviewPanel) reviewPanel.classList.remove("hidden");
+
+        teacherVisibleNavIds.forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.classList.remove("hidden");
+        });
+        adminOnlyNavIds.forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.classList.add("hidden");
+        });
+
+        if (classSelect) {
+          classSelect.disabled = false;
+          classSelect.value = defaultClass;
+        }
+
+        const currentActiveSec = document.querySelector(".tab-content:not(.hidden)");
+        const curTabId = currentActiveSec ? currentActiveSec.id : "tabSchedule";
+        if (curTabId === "tabRadar" || curTabId === "tabReports" || curTabId === "tabRoster") {
+          switchTab("tabSchedule");
+        }
+
+        renderScheduleGrid(defaultClass);
+        renderTasksTable();
+        showToast(`已切換至 ${tName} 老師視角 (受限模組 1~3，僅顯示本人紀錄)`, "👨‍🏫");
+
+      } else {
+        const aName = specificUser || "施銘權";
+        appData.currentUser = aName;
+        if (badge) {
+          badge.className = "px-2 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30";
+          badge.textContent = `🛡️ ${aName} [教務組長/最高管理]`;
+        }
+        if (banner) banner.classList.add("hidden");
+        if (reviewPanel) reviewPanel.classList.remove("hidden");
+
+        ["navSchedule", "navTasks", "navWorkflow", "navRadar", "navReports", "navRoster"].forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.classList.remove("hidden");
+        });
+
+        if (classSelect) {
+          classSelect.disabled = false;
+        }
+
+        renderScheduleGrid(appData.currentScheduleClass || "901");
+        renderTasksTable();
+        showToast(`已切換至 ${aName} (最高管理員，全功能開放)`, "🛡️");
+      }
+    }
+
+    // ==========================================
+    // 9. 彈窗與使用者介面輔助
+    // ==========================================
+    function openModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) modal.classList.remove("hidden");
+    }
+
+    function closeModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) modal.classList.add("hidden");
+    }
+
+    function showToast(message, icon = "✅") {
+      const toast = document.getElementById("toastNotification");
+      const msgEl = document.getElementById("toastMessage");
+      const iconEl = document.getElementById("toastIcon");
+      if (!toast) return;
+
+      if (msgEl) msgEl.textContent = message;
+      if (iconEl) iconEl.textContent = icon;
+
+      toast.classList.remove("translate-y-20", "opacity-0", "pointer-events-none");
+      setTimeout(() => {
+        toast.classList.add("translate-y-20", "opacity-0", "pointer-events-none");
+      }, 3000);
+    }
+
+    function updatePasswordHint(userName) {
+      const select = document.getElementById("loginTeacherSelect");
+      const opt = select.options[select.selectedIndex];
+      const pwd = opt.getAttribute("data-pwd") || "apexczone";
+      document.getElementById("loginHintPwdText").textContent = pwd;
+    }
+
+    function applyHintPassword() {
+      const pwd = document.getElementById("loginHintPwdText").textContent;
+      document.getElementById("loginPasswordInput").value = pwd;
+      showToast("已帶入預設密碼");
+    }
+
+    function executeLogin() {
+      const userName = document.getElementById("loginTeacherSelect").value;
+      closeModal("modalLogin");
+      const role = (userName === "施銘權" || userName === "管理人") ? "admin" : "teacher";
+      switchRole(role, userName);
+      showToast(`登入成功：${userName}`);
+    }
+
+    function quickClassLogin(classId) {
+      closeModal("modalLogin");
+      switchRole("class", `CLASS_${classId}`, classId);
+    }
+
+    function handleCourseTypeChange() {
+      const type = document.getElementById("calcCourseTypeSelect").value;
+      const rateInput = document.getElementById("calcCustomRateInput");
+      if (type === "regular") {
+        rateInput.value = 455;
+      } else if (type === "afterSchool") {
+        rateInput.value = 450;
+      } else if (type === "selfPaid") {
+        rateInput.value = 0;
+      }
+      recalculateTutorFee();
+    }
+
+    function recalculateTutorFee() {
+      const dateVal = document.getElementById("calcSubDate").value;
+      const isTutor = document.getElementById("calcIsTutorBox").checked;
+      const rate = parseInt(document.getElementById("calcCustomRateInput").value, 10) || 0;
+      const period = parseInt(document.getElementById("calcPeriodSelect").value, 10);
+
+      const parsed = parseRocDate(dateVal);
+      const calc = calculateDailyTutorFee(parsed.rocStr);
+      const tutorFee = isTutor ? calc.total : 0;
+      const periodsCount = period === 0 ? 0 : 1;
+      const total = (periodsCount * rate) + tutorFee;
+
+      const hintEl = document.getElementById("calcFormulaHint");
+      if (hintEl) {
+        hintEl.innerHTML = `💡 <strong>${calc.year}年${calc.month}月</strong> (共 ${calc.daysInMonth} 天)：減授差額 $${calc.base} + 導師日額 $${calc.allowance} = <strong>$${calc.total} 元整</strong>`;
+      }
+
+      document.getElementById("calcTotalAmountText").textContent = `$${total} 元`;
+    }
+
+    function checkHomeroomStatus() {
+      const select = document.getElementById("calcOrigTeacher");
+      const opt = select.options[select.selectedIndex];
+      const isTutor = opt.getAttribute("data-is-tutor") === "true";
+      const cId = opt.getAttribute("data-class");
+      if (cId) document.getElementById("calcClassSelect").value = cId;
+      document.getElementById("calcIsTutorBox").checked = isTutor;
+      recalculateTutorFee();
+    }
+
+    function saveNewSubTaskDemo() {
+      const dateVal = document.getElementById("calcSubDate").value;
+      const classId = document.getElementById("calcClassSelect").value;
+      const origTeacher = document.getElementById("calcOrigTeacher").value;
+      const subTeacher = document.getElementById("calcSubTeacherSelect").value;
+      const period = parseInt(document.getElementById("calcPeriodSelect").value, 10);
+      const rate = parseInt(document.getElementById("calcCustomRateInput").value, 10) || 0;
+      const isTutor = document.getElementById("calcIsTutorBox").checked;
+      const subject = document.getElementById("calcSubjectInput").value.trim() || "課堂授課";
+
+      const parsed = parseRocDate(dateVal);
+      const calc = calculateDailyTutorFee(parsed.rocStr);
+      const tutorFee = isTutor ? calc.total : 0;
+      const periodsCount = period === 0 ? 0 : 1;
+      const amount = (periodsCount * rate) + tutorFee;
+
+      upsertTask({
+        id: `TASK_${parsed.rocStr}_${classId}_${period}_${Date.now().toString().slice(-4)}`,
+        subTeacher,
+        title: "教師",
+        docNo: "115年9月2日府教課二字第1152442203號",
+        date: parsed.rocStr,
+        dayOfWeek: parsed.dayOfWeek,
+        classPeriod: period === 0 ? `${classId} 全日代導` : `${classId} 第${period}節`,
+        classId,
+        period,
+        subject,
+        courseType: period === 8 ? "afterSchool" : "regular",
+        periodsCount,
+        rate,
+        tutorFee,
+        amount,
+        originalTeacher: origTeacher,
+        reason: "課務排代",
+        note: tutorFee > 0 ? "兼代導" : "排代"
+      });
+
+      closeModal("modalSubCalculator");
+      renderTasksTable();
+      renderReportTable();
+      renderRadarWorkspace();
+      showToast("排代儲存成功！");
+    }
+
+    function submitSwapDemo() {
+      const teacherA = document.getElementById("swapTeacherAInput").value;
+      const teacherB = document.getElementById("swapTeacherBSelect").value;
+      const courseA = document.getElementById("swapCourseAInput").value;
+      const courseB = document.getElementById("swapCourseBInput").value;
+
+      const newSwap = {
+        id: `SWAP-11510-${Date.now().toString().slice(-4)}`,
+        teacherA, courseA, teacherB, courseB,
+        reason: "導師輔導事務協調互換",
+        status: "pending_peer"
+      };
+
+      appData.swaps.unshift(newSwap);
+      closeModal("modalPeerSwap");
+      renderWorkflowUI();
+      pushToCloud({ action: "upsertSwap", swap: newSwap }, true);
+      showToast("已成功發起自辦調課申請！等待同仁確認");
+    }
+
+    function download13ColTemplate() {
+      const csv = "\uFEFF代課人姓名,職稱,核准文號,代課日期,星期,班級/堂,代課節數,每節鐘點費,代理導師費,應領金額,被代課教師,請假/代課事由,獨立備註\n蔡明振,801導師,115年9月2日府教課二字第1152442203號,1151006,週二,801 第1節,1,455,0,455,陳文鈴,國中綜合活動領域增能研習,—\n";
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "飛沙國中_標準13欄清冊範本.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast("已下載標準 13 欄清冊空白範本");
+    }
+
+    function simulateLegacyCsvUpload() {
+      openModal("modalCsvDiagnostic");
+    }
+
+    function triggerConflictWizardDemo() {
+      const container = document.getElementById("conflictCardsContainer");
+      if (container) {
+        container.innerHTML = `
+          <div class="border border-amber-300 rounded-xl p-3 bg-amber-50/50 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-800 text-xs">課堂標的：1151006 (週二) 第1節 801 家政課</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900">代課教師與公文號有異動</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[11px]">
+              <div class="p-2 rounded bg-slate-100 border border-slate-300">
+                <span class="font-bold text-slate-600 block">【現有系統紀錄】</span>
+                <div>代課：陳文鈴 老師</div>
+                <div class="text-slate-500">文號：待補齊</div>
+              </div>
+              <div class="p-2 rounded bg-amber-100 border border-amber-300">
+                <span class="font-bold text-amber-900 block">【新 CSV 匯入內容】</span>
+                <div>代課：蔡明振 老師</div>
+                <div class="text-amber-800">文號：115年9月2日府教課二字第1152442203號</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      openModal("modalConflictWizard");
+    }
+
+    function handleRealCsvUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const text = evt.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length <= 1) {
+          showToast("上傳檔案為空", "⚠️");
+          return;
+        }
+        const headers = lines[0].split(",");
+        if (headers.length !== 13) {
+          openModal("modalCsvDiagnostic");
+          return;
+        }
+        showToast(`已成功讀取 ${lines.length - 1} 筆排代資料並自動合併！`);
+      };
+      reader.readAsText(file);
+    }
+
+    // ==========================================
+    // 10. 頁面初始化 (單一乾淨進入點)
+    // ==========================================
+    document.addEventListener("DOMContentLoaded", () => {
+      // 0. 初始化雲端連線設定值
+      const savedGasUrl = getCloudGasUrl();
+      const gasInput = document.getElementById("cloudGasUrlInput");
+      if (gasInput && savedGasUrl) {
+        gasInput.value = savedGasUrl;
+      }
+
+      // 1. 初始化雷達作業台請假教師清單
+      const sel = document.getElementById("radarAbsentTeacherSelect");
+      if (sel) {
+        sel.innerHTML = "";
+        OFFICIAL_TEACHERS.forEach(t => {
+          if (t.name === "管理人") return;
+          const opt = document.createElement("option");
+          opt.value = t.name;
+          opt.textContent = `${t.name} (${t.title} - ${t.subject})`;
+          if (t.name === "蔡明振") opt.selected = true;
+          sel.appendChild(opt);
+        });
+        if (appData.radarTeacher) sel.value = appData.radarTeacher;
+      }
+
+      const dInput = document.getElementById("radarDateInput");
+      if (dInput && appData.radarDate) dInput.value = appData.radarDate;
+
+      // 2. 依序執行所有模組的渲染
+      renderScheduleGrid(appData.currentScheduleClass || "901");
+      renderTasksTable();
+      renderReportTable();
+      renderWorkflowUI();
+      renderRosterTableData();
+      renderRadarWorkspace();
+      recalculateTutorFee();
+
+      // 3. 啟動 SWR 背景靜默拉取最新 Google 試算表資料
+      if (savedGasUrl) {
+        pullFromCloud(true);
+      } else {
+        setCloudSyncStatusBadge("offline", "雲端未綁定");
+      }
+    });
+  </script>
 </body>
 </html>
