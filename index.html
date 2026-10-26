@@ -54,6 +54,90 @@
       background: #94a3b8;
       border-radius: 4px;
     }
+
+    /* ==================== 方案 B：雙軌自適應 (電視滿版大屏 + 桌機最適) ==================== */
+    body.classroom-tv-mode {
+      background-color: #020617 !important; /* 電視大屏專屬高對比沉浸深色底 */
+      color: #f8fafc !important;
+    }
+    body.classroom-tv-mode header {
+      background-color: #0b1120 !important;
+      border-bottom: 2px solid #1e293b !important;
+    }
+    body.classroom-tv-mode header > div,
+    body.classroom-tv-mode #classroomBanner > div,
+    body.classroom-tv-mode main {
+      max-width: 100% !important; /* 解除 1280px 限制，100% 填滿 16:9 電視大屏 */
+      width: 100% !important;
+      padding-left: 1.5rem !important;
+      padding-right: 1.5rem !important;
+    }
+    body.classroom-tv-mode main {
+      padding-top: 0.75rem !important;
+      padding-bottom: 1rem !important;
+    }
+    body.classroom-tv-mode #tabSchedule > div:first-child {
+      background: #0f172a !important;
+      border-color: #1e293b !important;
+      color: #f8fafc !important;
+      padding: 0.75rem 1.25rem !important;
+    }
+    body.classroom-tv-mode #scheduleClassTitle {
+      font-size: 1.65rem !important; /* 大屏專屬特大班級標題 */
+      color: #38bdf8 !important;
+    }
+    body.classroom-tv-mode #scheduleTable {
+      background: #0b1120 !important;
+    }
+    body.classroom-tv-mode .excel-table th {
+      background: #1e293b !important;
+      color: #f8fafc !important;
+      font-size: 1.25rem !important; /* 星期標題放大 */
+      padding: 12px 6px !important;
+      border-color: #334155 !important;
+    }
+    body.classroom-tv-mode .excel-table td {
+      border-color: #334155 !important;
+      padding: 12px 8px !important;
+      min-height: 72px !important;
+    }
+    body.classroom-tv-mode .tv-period-header {
+      background: #0f172a !important;
+      color: #94a3b8 !important;
+      font-size: 1.15rem !important;
+      font-weight: 800 !important;
+    }
+    body.classroom-tv-mode .tv-time-text {
+      font-size: 0.85rem !important;
+      color: #cbd5e1 !important;
+    }
+    body.classroom-tv-mode .tv-course-title {
+      font-size: 1.4rem !important; /* 課堂科目特大粗體 (22px)，後排一清二楚 */
+      font-weight: 900 !important;
+      color: #ffffff !important;
+      letter-spacing: 0.025em;
+    }
+    body.classroom-tv-mode .tv-teacher-name {
+      font-size: 1.15rem !important; /* 教師姓名放大 (18px) */
+      font-weight: 700 !important;
+      color: #93c5fd !important;
+      margin-top: 3px;
+    }
+    body.classroom-tv-mode .tv-sub-badge {
+      font-size: 0.9rem !important;
+      padding: 2px 8px !important;
+    }
+    body.classroom-tv-mode .schedule-cell-sub {
+      background: linear-gradient(135deg, #451a03 0%, #7c2d12 100%) !important;
+      border: 2.5px solid #fb923c !important;
+      box-shadow: 0 4px 12px rgba(251, 146, 60, 0.25) !important;
+    }
+    body.classroom-tv-mode .schedule-cell-sub .tv-course-title {
+      color: #ffedd5 !important;
+    }
+    body.classroom-tv-mode .schedule-cell-sub .tv-teacher-name {
+      color: #fed7aa !important;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -156,11 +240,16 @@
     <div class="max-w-7xl mx-auto flex items-center justify-between text-xs md:text-sm font-medium">
       <div class="flex items-center gap-2">
         <span class="text-lg">📺</span>
-        <span><strong>【教室電視專用視角】</strong> 系統已啟動權限邊界：已隱藏所有行政、調課審核與代課清冊模組，僅提供純淨課表輪播。</span>
+        <span><strong>【教室電視專用視角 (100% 滿版大屏模式)】</strong> 系統已啟動雙軌自適應：全螢幕展開、字體放大 1.4 倍，後排學生清晰可見。</span>
       </div>
-      <button onclick="switchRole('admin')" class="bg-emerald-800 hover:bg-emerald-900 px-3 py-1 rounded text-xs transition">
-        切換回管理者
-      </button>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleFullScreen()" class="bg-emerald-800 hover:bg-emerald-900 border border-emerald-400/30 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow" title="填滿電視畫面">
+          <span>⛶</span> 全螢幕投放 (F11)
+        </button>
+        <button onclick="switchRole('admin')" class="bg-slate-900/80 hover:bg-slate-900 px-3 py-1.5 rounded-lg text-xs transition border border-slate-700">
+          切換回管理者
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1474,6 +1563,7 @@
       // ==============================================
       const classId = targetId;
       const tutorName = CLASS_TUTOR_MAP[classId] || "導師";
+      const isTv = (appData.currentRole === "class");
       
       if (titleEl) {
         titleEl.textContent = `${classId} 班全週課表 (導師：${tutorName})`;
@@ -1482,7 +1572,7 @@
       // 1. 渲染表頭 (帶代導氣泡標註)
       let headHtml = `
         <tr class="bg-slate-100 text-slate-700 font-bold">
-          <th class="w-24 py-2">節次 / 時間</th>
+          <th class="w-24 py-2.5 tv-period-header">節次 / 時間</th>
       `;
 
       SCHEDULE_WEEK_DAYS.forEach(day => {
@@ -1495,11 +1585,11 @@
         if (tutorTask) {
           headHtml += `
             <th class="w-1/5 bg-amber-50/90 border-b border-amber-300">
-              ${day.label} (${day.dateStr})<br>
-              <div class="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-amber-200 border border-amber-400 text-amber-950 font-bold text-[11px] shadow-sm animate-pulse">
+              <span class="text-sm md:text-base font-extrabold">${day.label} (${day.dateStr})</span><br>
+              <div class="inline-block mt-1 px-3 py-1 rounded-full bg-amber-200 border border-amber-400 text-amber-950 font-black text-xs shadow-sm animate-pulse tv-sub-badge">
                 🚨 今日代導：${tutorTask.subTeacher} 老師
               </div>
-              <div class="text-[10px] text-amber-800 font-normal mt-0.5">
+              <div class="text-[11px] text-amber-800 font-normal mt-0.5">
                 (原導師：${tutorName} 請假)
               </div>
             </th>
@@ -1507,8 +1597,8 @@
         } else {
           headHtml += `
             <th class="w-1/5">
-              ${day.label} (${day.dateStr})<br>
-              <span class="text-[11px] font-normal text-slate-500">導師：${tutorName}</span>
+              <span class="text-sm md:text-base font-extrabold">${day.label} (${day.dateStr})</span><br>
+              <span class="text-xs font-normal text-slate-500">導師：${tutorName}</span>
             </th>
           `;
         }
@@ -1522,7 +1612,7 @@
       // 早自修 (Period 0)
       bodyHtml += `
         <tr>
-          <td class="bg-slate-50 font-bold text-slate-600">早自修<br><span class="text-[10px] text-slate-400 font-normal">${PERIOD_TIMES[0]}</span></td>
+          <td class="bg-slate-50 font-bold text-slate-600 tv-period-header">早自修<br><span class="text-[10px] text-slate-400 font-normal tv-time-text">${PERIOD_TIMES[0]}</span></td>
       `;
       SCHEDULE_WEEK_DAYS.forEach(day => {
         const tutorTask = appData.tasks.find(t => 
@@ -1533,17 +1623,17 @@
 
         if (tutorTask) {
           bodyHtml += `
-            <td class="bg-amber-100/90 border-2 border-amber-400 p-2 text-left">
+            <td class="bg-amber-100/90 border-2 border-amber-400 p-2.5 text-left">
               <div class="flex items-center justify-between">
-                <span class="px-1.5 py-0.5 bg-amber-600 text-white text-[10px] rounded font-bold">全日代理導師</span>
+                <span class="px-2 py-0.5 bg-amber-600 text-white text-xs rounded font-bold tv-sub-badge">全日代理導師</span>
               </div>
-              <div class="text-sm font-black text-amber-950 mt-0.5">${tutorTask.subTeacher} 老師</div>
-              <div class="text-[10px] text-amber-800">📌 晨光常規 / 聯絡簿指導 / 出缺席查核</div>
+              <div class="tv-course-title text-amber-950 mt-1">${tutorTask.subTeacher} 老師</div>
+              <div class="text-xs text-amber-800 font-medium">📌 晨光常規 / 聯絡簿指導 / 出缺席查核</div>
             </td>
           `;
         } else {
           const morningActivity = day.dayNum === 3 ? "升旗 / 晨會" : (day.dayNum === 5 ? "週會活動" : "晨讀時間");
-          bodyHtml += `<td class="text-slate-400">${morningActivity}</td>`;
+          bodyHtml += `<td class="text-slate-400 text-sm font-medium">${morningActivity}</td>`;
         }
       });
       bodyHtml += `</tr>`;
@@ -1552,9 +1642,9 @@
       for (let p = 1; p <= 8; p++) {
         bodyHtml += `
           <tr>
-            <td class="bg-slate-50 font-bold text-slate-600">
-              第 ${p} 節${p === 8 ? '<br><span class="text-[9px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">課後輔導</span>' : ''}
-              <br><span class="text-[10px] text-slate-400 font-normal">${PERIOD_TIMES[p]}</span>
+            <td class="bg-slate-50 font-bold text-slate-600 tv-period-header">
+              第 ${p} 節${p === 8 ? '<br><span class="text-[10px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">課後輔導</span>' : ''}
+              <br><span class="text-[10px] text-slate-400 font-normal tv-time-text">${PERIOD_TIMES[p]}</span>
             </td>
         `;
 
@@ -1599,20 +1689,20 @@
             (s.courseA.includes(`第${p}節`) || s.courseB.includes(`第${p}節`))
           );
 
-          // 狀態分流 (徹底去金額化)
+          // 狀態分流 (徹底去金額化，且支援大屏大字號語義類別)
           if (spCourseName && origCourseName) {
             bodyHtml += `
               <td class="p-1">
                 <div class="grid grid-cols-2 gap-1 h-full">
-                  <div class="bg-blue-50 border border-blue-200 p-1.5 rounded text-left">
-                    <span class="px-1 py-0.2 bg-blue-600 text-white text-[9px] rounded font-bold">原班普通課</span>
-                    <div class="font-bold text-slate-800 text-xs mt-0.5">${origCourseName}</div>
-                    <div class="text-[11px] text-slate-500">${origTeacherName} 老師</div>
+                  <div class="bg-blue-50 border border-blue-200 p-2 rounded text-left">
+                    <span class="px-1.5 py-0.5 bg-blue-600 text-white text-[10px] rounded font-bold">原班普通課</span>
+                    <div class="tv-course-title text-slate-900 text-sm mt-0.5">${origCourseName}</div>
+                    <div class="tv-teacher-name text-slate-600 text-xs">${origTeacherName} 老師</div>
                   </div>
-                  <div class="bg-emerald-50 border border-emerald-300 p-1.5 rounded text-left">
-                    <span class="px-1 py-0.2 bg-emerald-600 text-white text-[9px] rounded font-bold">🌱 特教抽離</span>
-                    <div class="font-bold text-emerald-950 text-xs mt-0.5">${spCourseName}</div>
-                    <div class="text-[11px] text-emerald-700 font-bold">${spTeacherName} 老師</div>
+                  <div class="bg-emerald-50 border border-emerald-300 p-2 rounded text-left">
+                    <span class="px-1.5 py-0.5 bg-emerald-600 text-white text-[10px] rounded font-bold">🌱 特教抽離</span>
+                    <div class="tv-course-title text-emerald-950 text-sm mt-0.5">${spCourseName}</div>
+                    <div class="tv-teacher-name text-emerald-700 text-xs">${spTeacherName} 老師</div>
                   </div>
                 </div>
               </td>
@@ -1620,37 +1710,37 @@
           } else if (subTask) {
             const displaySubject = subTask.subject || origCourseName || '課堂授課';
             bodyHtml += `
-              <td class="p-2 schedule-cell-sub">
+              <td class="p-2.5 schedule-cell-sub">
                 <div class="flex items-center justify-between">
-                  <span class="bg-orange-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">代課</span>
-                  ${p === 8 ? '<span class="text-[9px] text-amber-800 font-bold bg-amber-100 px-1 rounded">第8節</span>' : ''}
+                  <span class="bg-orange-600 text-white text-xs font-black px-2 py-0.5 rounded tv-sub-badge">代課</span>
+                  ${p === 8 ? '<span class="text-[10px] text-amber-900 font-bold bg-amber-200 px-1.5 rounded">第8節</span>' : ''}
                 </div>
-                <div class="font-bold text-orange-950 text-sm mt-0.5">${displaySubject}</div>
-                <div class="font-extrabold text-orange-900">${subTask.subTeacher} 老師</div>
-                <div class="text-[10px] text-slate-500 border-t border-orange-200 mt-1 pt-0.5">原授課：${subTask.originalTeacher}</div>
+                <div class="tv-course-title mt-1">${displaySubject}</div>
+                <div class="tv-teacher-name font-black">${subTask.subTeacher} 老師</div>
+                <div class="text-[11px] text-slate-300/80 border-t border-orange-400/30 mt-1 pt-0.5">原授課：${subTask.originalTeacher}</div>
               </td>
             `;
           } else if (approvedSwap) {
             bodyHtml += `
-              <td class="p-2 schedule-cell-swap">
+              <td class="p-2.5 schedule-cell-swap">
                 <div class="flex items-center justify-between">
-                  <span class="bg-purple-600 text-white text-[10px] font-bold px-1 rounded">自辦互調</span>
-                  <span class="text-purple-700 text-[10px]">已核准</span>
+                  <span class="bg-purple-600 text-white text-xs font-black px-2 py-0.5 rounded tv-sub-badge">自辦互調</span>
+                  <span class="text-purple-300 text-xs font-bold">已核准</span>
                 </div>
-                <div class="font-bold text-purple-950 text-sm mt-0.5">${origCourseName}</div>
-                <div class="font-extrabold text-purple-900">${approvedSwap.teacherB} 老師</div>
-                <div class="text-[10px] text-purple-600 border-t border-purple-200 mt-1 pt-0.5">原堂互換</div>
+                <div class="tv-course-title mt-1">${origCourseName}</div>
+                <div class="tv-teacher-name text-purple-200 font-black">${approvedSwap.teacherB} 老師</div>
+                <div class="text-[11px] text-purple-300/80 border-t border-purple-400/30 mt-1 pt-0.5">原堂互換</div>
               </td>
             `;
           } else if (origCourseName) {
             bodyHtml += `
-              <td class="p-2">
-                <div class="font-bold text-slate-800 text-sm">${origCourseName}</div>
-                <div class="text-slate-500">${origTeacherName} 老師</div>
+              <td class="p-2.5">
+                <div class="tv-course-title text-slate-800">${origCourseName}</div>
+                <div class="tv-teacher-name text-slate-500">${origTeacherName} 老師</div>
               </td>
             `;
           } else {
-            bodyHtml += `<td class="text-slate-300">—</td>`;
+            bodyHtml += `<td class="text-slate-400 text-sm">—</td>`;
           }
         });
 
@@ -2512,6 +2602,9 @@
         appData.currentUser = `CLASS_${cId}`;
         appData.currentScheduleClass = cId;
 
+        // 【方案 B 啟動】電視大屏自適應：滿版 100% 展開 + 字體放大 1.4 倍
+        document.body.classList.add("classroom-tv-mode");
+
         if (badge) {
           badge.className = "px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
           badge.textContent = `📺 ${cId} 班教室電視端`;
@@ -2531,9 +2624,12 @@
 
         switchTab("tabSchedule");
         renderScheduleGrid(cId);
-        showToast(`已切換為 ${cId} 教室電視端，硬鎖純淨課表輪播`, "📺");
+        showToast(`已切換為 ${cId} 教室電視端 (100% 滿版大屏自適應模式)`, "📺");
 
       } else if (role === "teacher") {
+        // 【方案 B 復原】教師端視角：收斂回 1280px 桌機最適版面
+        document.body.classList.remove("classroom-tv-mode");
+
         const tName = specificUser || "蔡明振";
         appData.currentUser = tName;
         appData.currentScheduleClass = tName; // 教師視角預設檢視自己的課表
@@ -2573,6 +2669,9 @@
         showToast(`已切換至 ${tName} 老師視角，已載入您的個人課表`, "👨‍🏫");
 
       } else {
+        // 【方案 B 復原】管理員視角：維持 1280px 桌機最適版面
+        document.body.classList.remove("classroom-tv-mode");
+
         const aName = specificUser || "施銘權";
         appData.currentUser = aName;
         if (badge) {
@@ -2594,6 +2693,22 @@
         renderScheduleGrid(appData.currentScheduleClass || "901");
         renderTasksTable();
         showToast(`已切換至 ${aName} (最高管理員，全功能開放)`, "🛡️");
+      }
+    }
+
+    // ==========================================
+    // 8.5 大屏電視全螢幕投放輔助 (Fullscreen API)
+    // ==========================================
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn("Fullscreen request error:", err);
+          showToast("瀏覽器已限制全螢幕觸發，可按鍵盤 F11 鍵切換", "ℹ️");
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
       }
     }
 
