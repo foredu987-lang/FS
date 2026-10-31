@@ -59,6 +59,12 @@
 
         <!-- 頂部功能快捷按鈕 -->
         <div class="flex items-center gap-2 sm:gap-3">
+          <!-- 身分權限切換按鈕 (組長解鎖 / 一般教師) -->
+          <button id="roleToggleBtn" onclick="openLoginModal()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+            <span>👤</span>
+            <span>一般教師 (點擊解鎖)</span>
+          </button>
+
           <!-- 共同日曆快捷入口 -->
           <a id="calendarLinkBtn" href="https://calendar.google.com/calendar/u/0/r?cid=c_9f7d9e917c79ee2de6f54ed275f97d9bfdb493ba457a0135b69438213e217ba6@group.calendar.google.com" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 transition">
             <span>📅</span>
@@ -176,16 +182,16 @@
           </p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-          <button onclick="openCsvUploadModal()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition flex items-center gap-1.5">
+          <button onclick="openCsvUploadModal()" class="admin-only px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition flex items-center gap-1.5">
             <span>📥</span> 上傳標準 12 欄清冊 (CSV)
           </button>
           <button onclick="downloadCsvTemplate()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition flex items-center gap-1.5">
             <span>📄</span> 下載空白範本
           </button>
-          <button onclick="openAddTaskModal()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition flex items-center gap-1.5">
+          <button onclick="openAddTaskModal()" class="admin-only px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition flex items-center gap-1.5">
             <span>➕</span> 手動新增 1 筆排代
           </button>
-          <button onclick="confirmResetLocalStorage()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition flex items-center gap-1.5">
+          <button onclick="confirmResetLocalStorage()" class="admin-only px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition flex items-center gap-1.5">
             <span>🗑️</span> 清空暫存重置
           </button>
         </div>
@@ -344,48 +350,73 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- 模組 4：排代作業台 (Excel 矩陣) -->
+    <!-- 模組 4：排代作業台 (全校空堂與衝堂檢核 Excel 矩陣) -->
     <!-- ========================================== -->
     <div id="module4" class="tab-content hidden space-y-4">
-      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-            <span>⚡</span> 課務組長排代作業台
-          </h2>
-          <p class="text-xs text-slate-500 mt-0.5">
-            晨間快速派代、自訂提醒分鐘數與晨報速發
-          </p>
-        </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <!-- 自訂提醒分鐘數下拉選單 -->
-          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg text-xs">
-            <span class="text-slate-600 font-semibold">🔔 課前提醒：</span>
-            <select id="reminderMinutesSelect" onchange="updateReminderSetting(this.value)" class="bg-transparent font-bold text-indigo-700 outline-none">
-              <option value="5">課前 5 分鐘</option>
-              <option value="10">課前 10 分鐘</option>
-              <option value="15" selected>課前 15 分鐘</option>
-              <option value="20">課前 20 分鐘</option>
-              <option value="30">課前 30 分鐘</option>
-              <option value="0">不提醒</option>
-            </select>
+      <!-- 頂部作業列：提醒設定、晨報速發、星期切換與人力池 -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+              <span>⚡</span> 課務組長排代作業台 (全校作息與空堂矩陣)
+            </h2>
+            <p id="matrixTargetDateTitle" class="text-xs text-indigo-700 font-bold mt-0.5">
+              載入中...
+            </p>
           </div>
 
-          <!-- 08:00 晨報速發按鈕 -->
-          <button onclick="openMorningDigestModal()" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition flex items-center gap-1.5">
-            <span>🌅</span> 當日 08:00 代課晨報速發
-          </button>
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- 自訂提醒分鐘數下拉選單 -->
+            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs">
+              <span class="text-slate-600 font-semibold">🔔 課前提醒：</span>
+              <select id="reminderMinutesSelect" onchange="updateReminderSetting(this.value)" class="bg-transparent font-bold text-indigo-700 outline-none">
+                <option value="5">課前 5 分鐘</option>
+                <option value="10">課前 10 分鐘</option>
+                <option value="15" selected>課前 15 分鐘</option>
+                <option value="20">課前 20 分鐘</option>
+                <option value="30">課前 30 分鐘</option>
+                <option value="0">不提醒</option>
+              </select>
+            </div>
+
+            <!-- 08:00 晨報速發按鈕 -->
+            <button onclick="openMorningDigestModal()" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition flex items-center gap-1.5">
+              <span>🌅</span> 當日 08:00 代課晨報速發
+            </button>
+          </div>
+        </div>
+
+        <!-- 星期切換列與即時人力池統計 -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+          <div class="flex items-center gap-2" id="matrixDaySelector">
+            <!-- matrix.js 動態注入週一至週五切換鈕 -->
+          </div>
+          <div id="matrixStatPool">
+            <!-- matrix.js 動態注入人力池統計 -->
+          </div>
         </div>
       </div>
 
-      <!-- 快速排代矩陣檢視卡片 -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-bold text-slate-700">📌 選擇欲派代之空堂或缺課 (以週為單位即時檢索)</span>
-          <span class="text-[11px] text-slate-400">點擊空堂可直接帶入派代視窗</span>
+      <!-- 全校 13 位教師空堂/忙碌排代矩陣主表格 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead id="matrixThead">
+              <!-- matrix.js 動態注入節次表頭 -->
+            </thead>
+            <tbody id="matrixTbody" class="divide-y divide-slate-100">
+              <!-- matrix.js 動態注入教師作息矩陣 -->
+            </tbody>
+          </table>
         </div>
-        <div class="p-6 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-          <p class="text-xs text-slate-600 font-semibold mb-2">請直接由上方「📑 模組 2」點擊【手動新增 1 筆排代】或直接匯入 CSV 清冊</p>
-          <p class="text-[11px] text-slate-400">系統已全面啟用防劫持 RFC 4180 引擎，課表與日曆將在 0.5 秒內自動完成雙向關聯同步。</p>
+        <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-[11px] text-slate-500">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-100 border border-emerald-300"></span> 綠虛線：空堂 (點擊可立即指派代課)</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-100 border border-slate-200"></span> 灰色：常態授課中</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-rose-100 border border-rose-300"></span> 紅色：公差請假待代</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-200 border border-emerald-400"></span> 深綠：已支援代課</span>
+          </div>
+          <div>🛡️ 內建 4 重智慧防衝堂檢核攔截系統</div>
         </div>
       </div>
     </div>
@@ -495,7 +526,7 @@
                 </tr>
               </thead>
               <tbody id="rosterTbody" class="divide-y divide-slate-100">
-                <!-- 動態注入名冊 -->
+                <!-- app.js 動態注入名冊 -->
               </tbody>
             </table>
           </div>
@@ -517,7 +548,7 @@
               <p class="text-[11px] text-slate-400 mt-1">此日曆 ID 已固化於後端腳本中，排代與銷假全自動同步。</p>
             </div>
             <div class="pt-2 flex items-center gap-2">
-              <button onclick="saveCloudSettings()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm">
+              <button onclick="saveCloudSettings()" class="admin-only px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm">
                 💾 儲存並測試連線
               </button>
               <button onclick="pullFromCloud()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg border border-slate-300 transition">
@@ -540,7 +571,7 @@
         <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
           <span>📥</span> 匯入標準 12 欄排代清冊 (CSV)
         </h3>
-        <button onclick="closeCsvUploadModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+        <button onclick="closeCsvUploadModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold leading-none">&times;</button>
       </div>
 
       <div class="space-y-3 text-xs text-slate-600">
@@ -570,7 +601,7 @@
         <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
           <span>➕</span> 手動新增 1 筆公課排代
         </h3>
-        <button onclick="closeAddTaskModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+        <button onclick="closeAddTaskModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold leading-none">&times;</button>
       </div>
 
       <form id="addTaskForm" onsubmit="handleAddTaskSubmit(event)" class="grid grid-cols-2 gap-3 text-xs">
@@ -634,7 +665,7 @@
         <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
           <span>🌅</span> 飛沙國中 課務晨報 (早晨 08:00 速發)
         </h3>
-        <button onclick="closeMorningDigestModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+        <button onclick="closeMorningDigestModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold leading-none">&times;</button>
       </div>
 
       <div class="space-y-3 text-xs">
@@ -659,19 +690,23 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- 依序載入模組化 JavaScript 檔案 -->
+  <!-- 依序載入模組化 JavaScript 檔案 (依相依性載入) -->
   <!-- ========================================== -->
   <!-- 1. 全校 158 堂靜態課表與教師編制資料 -->
   <script src="js/data.js"></script>
 
-  <!-- 2. 全域狀態管理與共用輔助函式 -->
+  <!-- 2. 身分驗證、權限管控與自訂 Toast/對話框模組 -->
+  <script src="js/auth.js"></script>
+
+  <!-- 3. 全域狀態管理與主控生命週期 -->
   <script src="js/app.js"></script>
 
-  <!-- 3. 各功能子模組 -->
+  <!-- 4. 各功能子模組 -->
   <script src="js/schedule.js"></script>
   <script src="js/tasks.js"></script>
   <script src="js/swaps.js"></script>
   <script src="js/morning.js"></script>
+  <script src="js/matrix.js"></script>
   <script src="js/reports.js"></script>
   <script src="js/cloud.js"></script>
 </body>
