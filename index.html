@@ -211,7 +211,7 @@
         <span>📅</span> 模組 1：動態課表網格
       </button>
       <button onclick="switchTab('tabTasks')" id="navTasks" class="tab-btn px-4 py-2 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-1.5 transition">
-        <span>📑</span> 模組 2：標準 13 欄代課清冊
+        <span>📑</span> 模組 2：標準 12 欄代課清冊
       </button>
       <button onclick="switchTab('tabWorkflow')" id="navWorkflow" class="tab-btn px-4 py-2 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-1.5 transition">
         <span>🔄</span> 模組 3：同仁自辦調代課工作流
@@ -1246,12 +1246,13 @@
         if (rawTasks) {
           const parsed = JSON.parse(rawTasks);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // 🛡️ 智慧過濾守衛：自動踢除舊版欄位錯位的髒資料（種類是人名、日期是星期文字等）
+            // 🛡️ 智慧過濾守衛：自動踢除空白幽靈列與舊版欄位錯位髒資料
             const teacherNames = OFFICIAL_TEACHERS.map(x => x.name);
             const validTasks = parsed.filter(t => {
-              if (!t || !t.date) return false;
+              if (!t) return false;
+              if (!t.subTeacher || t.subTeacher.trim() === "") return false;
+              if (!t.date || t.date.trim() === "" || t.date === "null" || t.date.includes("週")) return false;
               if (teacherNames.includes(t.category)) return false;
-              if (t.date.includes("週") || t.date === "null" || t.periodsCount === null) return false;
               return true;
             });
             appData.tasks = validTasks;
@@ -1372,16 +1373,10 @@
         const data = await res.json();
 
         if (data.status === "success") {
-          // 合併 tasks
-          if (Array.isArray(data.tasks) && data.tasks.length > 0) {
-            data.tasks.forEach(remoteTask => {
-              const idx = appData.tasks.findIndex(t => t.id === remoteTask.id);
-              if (idx >= 0) {
-                appData.tasks[idx] = { ...appData.tasks[idx], ...remoteTask };
-              } else {
-                appData.tasks.push(remoteTask);
-              }
-            });
+          // 🛡️ 僅接收具有有效代課人與日期的任務，嚴防試算表空白列進入
+          if (Array.isArray(data.tasks)) {
+            const cleanRemoteTasks = data.tasks.filter(t => t && t.subTeacher && t.subTeacher.trim() !== "" && t.date && t.date.trim() !== "");
+            appData.tasks = cleanRemoteTasks;
           }
 
           // 合併 swaps
@@ -1919,10 +1914,14 @@
       if (!tbody) return;
       tbody.innerHTML = "";
 
+      // 🛡️ 嚴格過濾無效幽靈空行
+      const validTasks = appData.tasks.filter(t => t && t.subTeacher && t.subTeacher.trim() !== "" && t.date && t.date.trim() !== "");
+      appData.tasks = validTasks;
+
       const isTeacher = (appData.currentRole === "teacher");
       const displayTasks = isTeacher 
-        ? appData.tasks.filter(t => t.subTeacher === appData.currentUser || t.originalTeacher === appData.currentUser)
-        : appData.tasks;
+        ? validTasks.filter(t => t.subTeacher === appData.currentUser || t.originalTeacher === appData.currentUser)
+        : validTasks;
 
       if (displayTasks.length === 0) {
         tbody.innerHTML = `
@@ -3480,6 +3479,10 @@
           const title = (row[idxTitle] || '教師').trim();
           const docNo = (row[idxDocNo] || '').trim();
           const date = (row[idxDate] || '').trim();
+
+          // 🛡️ 防呆：若該行沒有代課人且沒有日期，判定為無效空行，直接略過
+          if (!subTeacher && !date) continue;
+
           const periodsCount = parseInt(row[idxPeriodsCount], 10) || 1;
           const rate = parseInt(row[idxRate], 10) || 455;
           const tutorFee = parseInt(row[idxTutorFee], 10) || 0;
