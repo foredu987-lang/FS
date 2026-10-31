@@ -3606,17 +3606,22 @@
         }
 
         const idxCategory = findColIndex(headerCols, ['種類', '類別', '假別'], 0);
-        const idxSubTeacher = findColIndex(headerCols, ['代課人', '代課教師'], 1);
+        const idxSubTeacher = findColIndex(headerCols, ['代課人', '代課教師', '代課者'], 1);
         const idxTitle = findColIndex(headerCols, ['職稱'], 2);
         const idxDocNo = findColIndex(headerCols, ['文號', '核准'], 3);
         const idxDate = findColIndex(headerCols, ['日期'], 4);
-        const idxPeriodsCount = findColIndex(headerCols, ['節數'], 5);
+        const idxPeriodsCount = findColIndex(headerCols, ['代課節數', '節數'], 5);
         const idxRate = findColIndex(headerCols, ['鐘點費', '每節'], 6);
         const idxTutorFee = findColIndex(headerCols, ['導師費', '代理導師'], 7);
         const idxAmount = findColIndex(headerCols, ['應領', '金額'], 8);
-        const idxOrigTeacher = findColIndex(headerCols, ['被代課', '原任課', '請假教師'], 9);
+        const idxOrigTeacher = findColIndex(headerCols, ['被代課', '原任課', '請假教師', '被代'], 9);
         const idxReason = findColIndex(headerCols, ['事由', '原因'], 10);
-        const idxClassPeriod = findColIndex(headerCols, ['班級', '堂', '節'], 11);
+        
+        // ⚠️ 關鍵修復：搜尋班級欄位時，嚴格鎖定「班」字關鍵詞，絕不使用「節」或「堂」，防止被第 5 欄「代課節數」劫持！
+        const idxClassPeriod = findColIndex(headerCols, ['班級', '班別', '授課班', '班'], headerCols.length > 11 ? 11 : headerCols.length - 1);
+
+        // 清除先前因解析錯誤累積的 CSV 排代暫存，避免重複堆疊
+        appData.tasks = appData.tasks.filter(t => !t.id.startsWith('TASK_CSV_'));
 
         let importedCount = 0;
 
@@ -3637,32 +3642,57 @@
           const amount = parseInt(row[idxAmount], 10) || ((periodsCount * rate) + tutorFee);
           const originalTeacher = (row[idxOrigTeacher] || '').trim();
           const reason = (row[idxReason] || '').trim();
-          const rawClassPeriod = (row[idxClassPeriod] || '').trim();
+          const rawClassPeriod = (row[idxClassPeriod] || '').replace(/["']/g, '').trim();
 
-          // 1. 班級識別 (701, 801, 901, 902)
-          let classId = '801';
+          // 1. 班級識別 (701, 801, 901, 902，支援中英文與純數字)
+          let classId = '';
           const matchClass = rawClassPeriod.match(/([789]\d{2})/);
           if (matchClass) {
             classId = matchClass[1];
+          } else if (rawClassPeriod.includes('701') || rawClassPeriod.includes('七') || rawClassPeriod.includes('7年')) {
+            classId = '701';
+          } else if (rawClassPeriod.includes('801') || rawClassPeriod.includes('八') || rawClassPeriod.includes('8年')) {
+            classId = '801';
+          } else if (rawClassPeriod.includes('902') || rawClassPeriod.includes('九年2') || rawClassPeriod.includes('九年二')) {
+            classId = '902';
+          } else if (rawClassPeriod.includes('901') || rawClassPeriod.includes('九') || rawClassPeriod.includes('9年')) {
+            classId = '901';
           }
 
-          // 2. 節次識別 (完整支援 901/6, 902/7, 801 第1節, 701-3, 901 8 等)
+          // 2. 節次識別 (支援 901/6, 902/7, 801 第1節, 701-3, 中文一至八, 全日代導等)
           let period = 1;
-          if (rawClassPeriod.includes('全日代導') || rawClassPeriod.includes('代導') || periodsCount === 0) {
+          const numMap = { '一': '1', '二': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '０': '0', '１': '1', '２': '2', '３': '3', '４': '4', '５': '5', '６': '6', '７': '7', '８': '8' };
+          const normalizedPeriodStr = rawClassPeriod.replace(/[一二三四五六七八０-８]/g, ch => numMap[ch] || ch);
+
+          if (normalizedPeriodStr.includes('全日代導') || normalizedPeriodStr.includes('代導') || periodsCount === 0) {
             period = 0;
           } else {
-            const matchPeriod = rawClassPeriod.match(/(?:[\/\-\s及與,]+[第]?|^[第]?\s*)([0-8])\s*(?:節|堂)?$/)
-                             || rawClassPeriod.match(/[第\/]([0-8])[節堂]?/)
-                             || rawClassPeriod.match(/([0-8])$/);
+            const matchPeriod = normalizedPeriodStr.match(/[\/\-\s_及與,]+[第]?([0-8])/)
+                             || normalizedPeriodStr.match(/[第]([0-8])[節堂]?/)
+                             || normalizedPeriodStr.match(/([0-8])\s*(?:節|堂)/)
+                             || normalizedPeriodStr.match(/([0-8])$/);
             if (matchPeriod && matchPeriod[1] !== undefined) {
               period = parseInt(matchPeriod[1], 10);
             }
           }
 
-          // 3. 科目自動回溯識別 (依被代課教師底冊智慧反查)
-          let subject = '課堂授課';
+          // 若文字未直接標註班級，依原任課教師當日排課或導師班級自動智慧補齊
           const parsedDate = parseRocDate(date);
           const dayNum = parsedDate.dayNum;
+          if (!classId) {
+            if (MASTER_SCHEDULE_MAP[originalTeacher] && MASTER_SCHEDULE_MAP[originalTeacher][dayNum] && MASTER_SCHEDULE_MAP[originalTeacher][dayNum][period]) {
+              const schText = MASTER_SCHEDULE_MAP[originalTeacher][dayNum][period];
+              const schMatch = schText.match(/([789]\d{2})/);
+              if (schMatch) classId = schMatch[1];
+            }
+            if (!classId) {
+              const homeroomClass = Object.keys(CLASS_TUTOR_MAP).find(c => CLASS_TUTOR_MAP[c] === originalTeacher);
+              classId = homeroomClass || '801';
+            }
+          }
+
+          // 3. 科目自動回溯識別 (依被代課教師底冊智慧反查)
+          let subject = '課堂授課';
           if (MASTER_SCHEDULE_MAP[originalTeacher] && MASTER_SCHEDULE_MAP[originalTeacher][dayNum] && MASTER_SCHEDULE_MAP[originalTeacher][dayNum][period]) {
             const courseStr = MASTER_SCHEDULE_MAP[originalTeacher][dayNum][period];
             subject = courseStr.replace(/^[0-9]+\s*/, '').trim() || subject;
@@ -3673,13 +3703,25 @@
           const formattedClassPeriod = period === 0 ? `${classId} 全日代導` : `${classId} 第${period}節`;
 
           let courseType = 'regular';
-          if (period === 8 || category.includes('第八節')) courseType = 'afterSchool';
-          else if (category.includes('身心調適')) courseType = 'mentalHealth';
-          else if (category.includes('事假') || category.includes('病假')) courseType = 'selfPaid';
+          let finalCategory = category;
+          let finalRate = rate;
+          let finalAmount = amount;
+
+          if (period === 8 || category.includes('第八節')) {
+            courseType = 'afterSchool';
+            finalCategory = '第八節';
+            finalRate = 450;
+            finalAmount = periodsCount * 450;
+          } else if (category.includes('身心調適')) {
+            courseType = 'mentalHealth';
+          } else if (category.includes('事假') || category.includes('病假')) {
+            courseType = 'selfPaid';
+            finalAmount = 0;
+          }
 
           const taskObj = {
             id: `TASK_CSV_${date}_${classId}_${period}_${Date.now().toString().slice(-4)}_${i}`,
-            category: category,
+            category: finalCategory,
             subTeacher: subTeacher,
             title: title || '教師',
             docNo: docNo,
@@ -3691,12 +3733,12 @@
             subject: subject,
             courseType: courseType,
             periodsCount: periodsCount,
-            rate: rate,
+            rate: finalRate,
             tutorFee: tutorFee,
-            amount: amount,
+            amount: finalAmount,
             originalTeacher: originalTeacher,
             reason: reason,
-            note: tutorFee > 0 ? '兼代導' : category
+            note: tutorFee > 0 ? '兼代導' : finalCategory
           };
 
           upsertTask(taskObj);
@@ -3714,7 +3756,7 @@
             tasks: appData.tasks,
             swaps: appData.swaps
           }, false);
-          showToast(`✅ 成功匯入 ${importedCount} 筆排代資料 (含 901/6 等格式)，並已同步至試算表！`);
+          showToast(`✅ 已修正欄位識別！成功匯入 ${importedCount} 筆排代資料，並已同步至雲端試算表！`);
         } else {
           showToast(`✅ 成功匯入 ${importedCount} 筆資料！(提醒：尚未設定試算表同步網址)`, 'ℹ️');
         }
