@@ -304,7 +304,7 @@
           <h2 id="tasksViewTitle" class="text-lg font-bold text-slate-800 flex items-center gap-2">
             <span>📑</span> 標準 12 欄公課排代與代導總冊
           </h2>
-          <p id="tasksViewSubtitle" class="text-xs text-slate-500 mt-0.5">每列最多 1 堂 (0或1節) • 民國 7 碼純數字 (1151006) • 種類細分 公(婚)、公(喪)、公(研習) • 班級/堂移至第12欄末位標註</p>
+          <p id="tasksViewSubtitle" class="text-xs text-slate-500 mt-0.5">每列最多 1 堂 (0或1節) • 民國 7 碼純數字 (1151006) • 種類支援 公、公(研習) • 班級/節支援 901/6 等格式</p>
         </div>
 
         <!-- 管理員功能按鈕列 -->
@@ -348,7 +348,7 @@
               <th class="p-2.5 text-right">9.應領金額</th>
               <th class="p-2.5">10.被代課教師</th>
               <th class="p-2.5">11.代課事由</th>
-              <th class="p-2.5">12.班級/堂</th>
+              <th class="p-2.5">12.班級/節</th>
               <th class="p-2.5 text-center">操作</th>
             </tr>
           </thead>
@@ -2501,7 +2501,7 @@
                 <th class="border border-slate-800 p-1.5 text-right w-20">9.應領金額</th>
                 <th class="border border-slate-800 p-1.5 w-16">10.被代課教師</th>
                 <th class="border border-slate-800 p-1.5 text-left">11.代課事由</th>
-                <th class="border border-slate-800 p-1.5 text-left w-24">12.班級/堂</th>
+                <th class="border border-slate-800 p-1.5 text-left w-24">12.班級/節</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-300 font-mono-code">
@@ -2606,26 +2606,21 @@
         });
 
         let html = `
-          <div class="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-950 flex items-center justify-between">
-            <div>
-              <span class="font-bold text-xs">💡 兼課超鐘點自動扣除勾稽說明：</span>
-              <span class="text-[11px] text-amber-800 ml-1">依人事差勤規定，同仁於排定兼課時段若因「公假」或「身心調適假」外出且已由他人代課，該節兼課超額不予支領，系統已自動比對並扣除。</span>
-            </div>
-            <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-bold text-xs font-mono-code shrink-0">基準月：4 週</span>
-          </div>
           <table class="w-full border-collapse border border-slate-800 text-[11px]">
             <thead>
-              <tr class="bg-amber-100/80 text-slate-900 font-bold border-b border-slate-800 text-center">
-                <th class="border border-slate-800 p-1.5 w-16">教師姓名</th>
-                <th class="border border-slate-800 p-1.5 w-20">現任職稱</th>
-                <th class="border border-slate-800 p-1.5 w-20">任教領域</th>
-                <th class="border border-slate-800 p-1.5 w-16">每週兼課</th>
-                <th class="border border-slate-800 p-1.5 w-20">應授節數(4週)</th>
-                <th class="border border-slate-800 p-1.5 w-24 text-rose-800">公假/調適扣除</th>
-                <th class="border border-slate-800 p-1.5 w-20 text-emerald-800">實計節數</th>
-                <th class="border border-slate-800 p-1.5 w-16">每節單價</th>
-                <th class="border border-slate-800 p-1.5 text-right w-24">實發兼課費</th>
-                <th class="border border-slate-800 p-1.5 w-20">印領簽章</th>
+              <tr class="bg-purple-100/80 text-slate-900 font-bold border-b border-slate-800 text-center">
+                <th class="border border-slate-800 p-1.5 w-16">1.種類</th>
+                <th class="border border-slate-800 p-1.5 w-16">2.代課人姓名</th>
+                <th class="border border-slate-800 p-1.5 w-16">3.職稱</th>
+                <th class="border border-slate-800 p-1.5 text-left">4.核准文號</th>
+                <th class="border border-slate-800 p-1.5 w-20">5.代課日期</th>
+                <th class="border border-slate-800 p-1.5 w-14">6.代課節數</th>
+                <th class="border border-slate-800 p-1.5 w-16">7.每節鐘點費</th>
+                <th class="border border-slate-800 p-1.5 w-16">8.代理導師費</th>
+                <th class="border border-slate-800 p-1.5 text-right w-20 text-purple-900">9.應領金額</th>
+                <th class="border border-slate-800 p-1.5 w-16">10.被代課教師</th>
+                <th class="border border-slate-800 p-1.5 text-left">11.代課事由</th>
+                <th class="border border-slate-800 p-1.5 text-left w-24">12.班級/節</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-300 font-mono-code">
@@ -2809,7 +2804,7 @@
                 <th class="border border-slate-800 p-1.5 text-right w-20 text-rose-800">9.應領金額</th>
                 <th class="border border-slate-800 p-1.5 w-16">10.被代課教師</th>
                 <th class="border border-slate-800 p-1.5 text-left">11.代課事由</th>
-                <th class="border border-slate-800 p-1.5 text-left w-24">12.班級/堂</th>
+                <th class="border border-slate-800 p-1.5 text-left w-24">12.班級/節</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-300 font-mono-code">
@@ -3534,12 +3529,12 @@
     }
 
     function download13ColTemplate() {
-      // 產出標準 12 欄 CSV 格式範本
-      const csv = "\uFEFF種類,代課人姓名,職稱,核准文號,代課日期,代課節數,每節鐘點費,代理導師費,應領金額,被代課教師,代課事由,班級/堂\n" +
-                  "公(研習),蔡明振,801導師,115年9月2日府教課二字第1152442203號,1151006,1,455,0,455,陳文鈴,國中綜合活動領域增能研習,801 第1節\n" +
-                  "公(比賽),陳文鈴,體衛組長,115年9月11日府教課二字第1152444635號,1151002,1,455,493,948,林𡶙鋌,中小學科展指導研習,902 第7節\n" +
-                  "公(喪),吳靜瑜,專任教師,115年10月1日校內核定,1151012,1,455,0,455,阮建安,同仁喪假公差代課,701 第2節\n" +
-                  "身心調適假,吳靜瑜,專任教師,教育部113年8月1日臺教授國字第1135503022號,1151015,1,455,0,455,蔡麗昭,身心調適假(專案免附證明),801 第4節\n";
+      // 產出標準 12 欄 CSV 格式範本 (支援 901/6 等格式)
+      const csv = "\uFEFF種類,代課人姓名,職稱,核准文號,代課日期,代課節數,每節鐘點費,代理導師費,應領金額,被代課教師,代課事由,班級/節\n" +
+                  "公,李貞慧,輔導主任,115年9月1日府教特二字第1152442200號,1151001,1,455,0,455,蔡芷儀,教育輔導團藝術領域分團辦理115學年度「分區研討暨夥伴協作實施計畫」,901/6\n" +
+                  "公,李貞慧,輔導主任,115年9月1日府教特二字第1152442200號,1151001,1,455,0,455,蔡芷儀,教育輔導團藝術領域分團辦理115學年度「分區研討暨夥伴協作實施計畫」,902/7\n" +
+                  "公(比賽),陳文鈴,體衛組長,115年9月11日府教課二字第1152444635號,1151002,1,455,493,948,林𡶙鋌,中小學科展指導研習,902/7\n" +
+                  "身心調適假,吳靜瑜,專任教師,教育部113年8月1日臺教授國字第1135503022號,1151015,1,455,0,455,蔡麗昭,身心調適假(專案免附證明),801/4\n";
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -3547,7 +3542,45 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      showToast("已下載標準 12 欄清冊空白範本");
+      showToast("已下載標準 12 欄清冊空白範本 (含 901/6 格式)");
+    }
+
+    // ==========================================
+    // RFC 4180 標準 CSV 解析引擎 (完整支援 Excel 換行 Alt+Enter、逗號與雙引號)
+    // ==========================================
+    function parseRFC4180CSV(text) {
+      const rows = [];
+      let currentRow = [''];
+      let inQuotes = false;
+      const clean = text.replace(/^\uFEFF/, '');
+
+      for (let i = 0; i < clean.length; i++) {
+        const char = clean[i];
+        const nextChar = clean[i + 1];
+
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            currentRow[currentRow.length - 1] += '"';
+            i++; // 跳過轉義引號
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          currentRow.push('');
+        } else if ((char === '\r' || char === '\n') && !inQuotes) {
+          if (char === '\r' && nextChar === '\n') i++;
+          if (currentRow.some(c => c.trim().length > 0)) {
+            rows.push(currentRow);
+          }
+          currentRow = [''];
+        } else {
+          currentRow[currentRow.length - 1] += char;
+        }
+      }
+      if (currentRow.some(c => c.trim().length > 0)) {
+        rows.push(currentRow);
+      }
+      return rows;
     }
 
     function handleRealCsvUpload(e) {
@@ -3556,100 +3589,106 @@
       const reader = new FileReader();
       reader.onload = function(evt) {
         const text = evt.target.result;
-        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-        if (lines.length <= 1) {
-          showToast("上傳檔案為空", "⚠️");
+        const rows = parseRFC4180CSV(text);
+        if (rows.length <= 1) {
+          showToast("上傳檔案為空或無有效資料列", "⚠️");
           return;
         }
-        
-        const cleanLine = (l) => l.replace(/^\uFEFF/, "").trim();
-        const headerCols = cleanLine(lines[0]).split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
-        
-        // 接受標準 12 欄（或兼容量舊 13 欄）
-        if (headerCols.length !== 12 && headerCols.length !== 13) {
-          openModal("modalCsvDiagnostic");
-          return;
+
+        // 標題正規化：去除換行 (Alt+Enter)、空白與斜線，例如 "代課人\n姓  名" ➔ "代課人姓名"
+        const cleanHeader = h => (h || '').replace(/[\s\r\n\/]+/g, '');
+        const headerCols = rows[0].map(cleanHeader);
+
+        // 尋找各欄位索引（容錯比對）
+        function findColIndex(headers, keywords, fallbackIdx) {
+          const idx = headers.findIndex(h => keywords.some(k => h.includes(k)));
+          return idx >= 0 ? idx : fallbackIdx;
         }
+
+        const idxCategory = findColIndex(headerCols, ['種類', '類別', '假別'], 0);
+        const idxSubTeacher = findColIndex(headerCols, ['代課人', '代課教師'], 1);
+        const idxTitle = findColIndex(headerCols, ['職稱'], 2);
+        const idxDocNo = findColIndex(headerCols, ['文號', '核准'], 3);
+        const idxDate = findColIndex(headerCols, ['日期'], 4);
+        const idxPeriodsCount = findColIndex(headerCols, ['節數'], 5);
+        const idxRate = findColIndex(headerCols, ['鐘點費', '每節'], 6);
+        const idxTutorFee = findColIndex(headerCols, ['導師費', '代理導師'], 7);
+        const idxAmount = findColIndex(headerCols, ['應領', '金額'], 8);
+        const idxOrigTeacher = findColIndex(headerCols, ['被代課', '原任課', '請假教師'], 9);
+        const idxReason = findColIndex(headerCols, ['事由', '原因'], 10);
+        const idxClassPeriod = findColIndex(headerCols, ['班級', '堂', '節'], 11);
 
         let importedCount = 0;
 
-        for (let i = 1; i < lines.length; i++) {
-          const rawRow = cleanLine(lines[i]);
-          if (!rawRow) continue;
-          const cols = rawRow.split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
-          if (cols.length < 12) continue;
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.every(c => c.trim().length === 0)) continue;
 
-          let category = "公(研習)";
-          let subTeacher = "";
-          let title = "教師";
-          let docNo = "";
-          let date = "";
-          let periodsCount = 1;
-          let rate = 455;
-          let tutorFee = 0;
-          let amount = 455;
-          let originalTeacher = "";
-          let reason = "";
-          let classPeriod = "";
+          let category = (row[idxCategory] || '公假').trim();
+          if (category === '公') category = '公假';
 
-          if (headerCols.length === 12) {
-            // 新標準 12 欄解析
-            category = cols[0] || "公假";
-            subTeacher = cols[1];
-            title = cols[2];
-            docNo = cols[3];
-            date = cols[4];
-            periodsCount = parseInt(cols[5], 10) || 0;
-            rate = parseInt(cols[6], 10) || 455;
-            tutorFee = parseInt(cols[7], 10) || 0;
-            amount = parseInt(cols[8], 10) || ((periodsCount * rate) + tutorFee);
-            originalTeacher = cols[9];
-            reason = cols[10];
-            classPeriod = cols[11];
-          } else {
-            // 兼容舊 13 欄解析
-            subTeacher = cols[0];
-            title = cols[1];
-            docNo = cols[2];
-            date = cols[3];
-            classPeriod = cols[5];
-            periodsCount = parseInt(cols[6], 10) || 0;
-            rate = parseInt(cols[7], 10) || 455;
-            tutorFee = parseInt(cols[8], 10) || 0;
-            amount = parseInt(cols[9], 10) || ((periodsCount * rate) + tutorFee);
-            originalTeacher = cols[10];
-            reason = cols[11];
-            category = cols[12] && cols[12].includes("公") ? cols[12] : "公(研習)";
+          const subTeacher = (row[idxSubTeacher] || '').trim();
+          const title = (row[idxTitle] || '教師').trim();
+          const docNo = (row[idxDocNo] || '').trim();
+          const date = (row[idxDate] || '').trim();
+          const periodsCount = parseInt(row[idxPeriodsCount], 10) || 1;
+          const rate = parseInt(row[idxRate], 10) || 455;
+          const tutorFee = parseInt(row[idxTutorFee], 10) || 0;
+          const amount = parseInt(row[idxAmount], 10) || ((periodsCount * rate) + tutorFee);
+          const originalTeacher = (row[idxOrigTeacher] || '').trim();
+          const reason = (row[idxReason] || '').trim();
+          const rawClassPeriod = (row[idxClassPeriod] || '').trim();
+
+          // 1. 班級識別 (701, 801, 901, 902)
+          let classId = '801';
+          const matchClass = rawClassPeriod.match(/([789]\d{2})/);
+          if (matchClass) {
+            classId = matchClass[1];
           }
 
-          let classId = "801";
+          // 2. 節次識別 (完整支援 901/6, 902/7, 801 第1節, 701-3, 901 8 等)
           let period = 1;
-          const matchClass = classPeriod.match(/(701|801|901|902)/);
-          if (matchClass) classId = matchClass[1];
-          const matchPeriod = classPeriod.match(/第\s*(\d+)\s*節/);
-          if (matchPeriod) {
-            period = parseInt(matchPeriod[1], 10);
-          } else if (classPeriod.includes("全日代導") || periodsCount === 0) {
+          if (rawClassPeriod.includes('全日代導') || rawClassPeriod.includes('代導') || periodsCount === 0) {
             period = 0;
+          } else {
+            const matchPeriod = rawClassPeriod.match(/(?:[\/\-\s及與,]+[第]?|^[第]?\s*)([0-8])\s*(?:節|堂)?$/)
+                             || rawClassPeriod.match(/[第\/]([0-8])[節堂]?/)
+                             || rawClassPeriod.match(/([0-8])$/);
+            if (matchPeriod && matchPeriod[1] !== undefined) {
+              period = parseInt(matchPeriod[1], 10);
+            }
           }
 
-          let courseType = "regular";
-          if (category.includes("身心調適")) courseType = "mentalHealth";
-          else if (category.includes("事假") || category.includes("病假")) courseType = "selfPaid";
-          else if (period === 8) courseType = "afterSchool";
+          // 3. 科目自動回溯識別 (依被代課教師底冊智慧反查)
+          let subject = '課堂授課';
+          const parsedDate = parseRocDate(date);
+          const dayNum = parsedDate.dayNum;
+          if (MASTER_SCHEDULE_MAP[originalTeacher] && MASTER_SCHEDULE_MAP[originalTeacher][dayNum] && MASTER_SCHEDULE_MAP[originalTeacher][dayNum][period]) {
+            const courseStr = MASTER_SCHEDULE_MAP[originalTeacher][dayNum][period];
+            subject = courseStr.replace(/^[0-9]+\s*/, '').trim() || subject;
+          } else if (period === 0 || rawClassPeriod.includes('代導')) {
+            subject = '代理導師業務';
+          }
+
+          const formattedClassPeriod = period === 0 ? `${classId} 全日代導` : `${classId} 第${period}節`;
+
+          let courseType = 'regular';
+          if (period === 8 || category.includes('第八節')) courseType = 'afterSchool';
+          else if (category.includes('身心調適')) courseType = 'mentalHealth';
+          else if (category.includes('事假') || category.includes('病假')) courseType = 'selfPaid';
 
           const taskObj = {
             id: `TASK_CSV_${date}_${classId}_${period}_${Date.now().toString().slice(-4)}_${i}`,
             category: category,
             subTeacher: subTeacher,
-            title: title || "教師",
+            title: title || '教師',
             docNo: docNo,
             date: date,
-            dayOfWeek: parseRocDate(date).dayOfWeek,
-            classPeriod: classPeriod,
+            dayOfWeek: parsedDate.dayOfWeek,
+            classPeriod: formattedClassPeriod,
             classId: classId,
             period: period,
-            subject: classPeriod.includes("代導") ? "代理導師業務" : "課堂授課",
+            subject: subject,
             courseType: courseType,
             periodsCount: periodsCount,
             rate: rate,
@@ -3657,7 +3696,7 @@
             amount: amount,
             originalTeacher: originalTeacher,
             reason: reason,
-            note: tutorFee > 0 ? "兼代導" : category
+            note: tutorFee > 0 ? '兼代導' : category
           };
 
           upsertTask(taskObj);
@@ -3671,16 +3710,16 @@
 
         if (getCloudGasUrl()) {
           pushToCloud({
-            action: "syncAll",
+            action: 'syncAll',
             tasks: appData.tasks,
             swaps: appData.swaps
           }, false);
-          showToast(`✅ 成功匯入 ${importedCount} 筆標準 12 欄排代資料，並已同步推播至 Google 試算表！`);
+          showToast(`✅ 成功匯入 ${importedCount} 筆排代資料 (含 901/6 等格式)，並已同步至試算表！`);
         } else {
-          showToast(`✅ 成功匯入 ${importedCount} 筆資料！(提醒：尚未設定試算表同步網址)`, "ℹ️");
+          showToast(`✅ 成功匯入 ${importedCount} 筆資料！(提醒：尚未設定試算表同步網址)`, 'ℹ️');
         }
 
-        e.target.value = "";
+        e.target.value = '';
       };
       reader.readAsText(file);
     }
