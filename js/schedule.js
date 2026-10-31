@@ -1,348 +1,363 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
- * 課務排代、調課與月結管理系統 - 官方真實課表底冊庫 (js/data.js)
- * 資料來源：Google 雲端硬碟 schedule_base.js (178節官方核定完整課表)
+ * 課務排代、調課與月結管理系統 - 動態課表與週次導航模組 (js/schedule.js)
+ * 修正：將 currentWeek 與 scheduleViewMode 正式綁定於 window，並在初始化時立即繪製課表
  */
 
 // ==========================================
-// 1. 學期時間軸與鐘點費率設定
+// 1. 全域狀態變數 (掛載於 window 確保跨檔案相容)
 // ==========================================
-const FEISHA_CONFIG_CONSTANTS = {
-  academicYear: 115,
-  semester: 1,
-  startDate: '2026-08-31T00:00:00', // 115-1 第一週週一
-  totalWeeks: 21,
-  defaultCalendarId: 'c_9f7d9e917c79ee2de6f54ed275f97d9bfdb493ba457a0135b69438213e217ba6@group.calendar.google.com',
-  hourlyRates: {
-    regular: 455,         // 日間第 1-7 節鐘點費
-    afterSchool: 450,     // 第 8 節課後輔導鐘點費
-    fullDayHomeroom: 493, // 全日代理導師費
-    halfDayHomeroom: 246  // 半日代理導師費
+window.currentWeek = 1;
+window.scheduleViewMode = 'class'; // 'class' 或 'teacher'
+
+// ==========================================
+// 2. 學期週次與日期對齊核心演算法
+// ==========================================
+
+/**
+ * 依據今日實際日期推算當前學期週次 (以 2026-08-31 115-1開學週為基準)
+ */
+function initAcademicWeek() {
+  const config = window.FEISHA_CONFIG_CONSTANTS || {
+    startDate: '2026-08-31T00:00:00',
+    totalWeeks: 21
+  };
+
+  const semStart = new Date(config.startDate);
+  const today = new Date();
+  
+  const diffTime = today.getTime() - semStart.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  let calculatedWeek = Math.floor(diffDays / 7) + 1;
+  if (calculatedWeek < 1) calculatedWeek = 1;
+  if (calculatedWeek > config.totalWeeks) calculatedWeek = config.totalWeeks;
+  
+  window.currentWeek = calculatedWeek;
+
+  // 1. 產生 1~21 週下拉選單
+  populateWeekSelect();
+
+  // 2. 初始化檢視目標選單 (班級或教師)
+  initScheduleTargetSelect();
+
+  // 3. 關鍵修復：初始化完成立即繪製當週課表網格！
+  renderScheduleGrid();
+}
+
+/**
+ * 取得指定學期週次之週一至週五的精確日期物件與民國年7碼字串
+ */
+function getWeekDates(weekNum) {
+  const config = window.FEISHA_CONFIG_CONSTANTS || { startDate: '2026-08-31T00:00:00' };
+  const semStart = new Date(config.startDate);
+  
+  const monday = new Date(semStart);
+  monday.setDate(monday.getDate() + (weekNum - 1) * 7);
+
+  const weekDates = [];
+  for (let i = 0; i < 5; i++) {
+    const currentDay = new Date(monday);
+    currentDay.setDate(monday.getDate() + i);
+
+    const year = currentDay.getFullYear();
+    const rocYear = year - 1911;
+    const month = currentDay.getMonth() + 1;
+    const date = currentDay.getDate();
+    const rocDateStr = `${rocYear}${String(month).padStart(2, '0')}${String(date).padStart(2, '0')}`;
+
+    weekDates.push({
+      month: month,
+      date: date,
+      fullRoc: rocDateStr,
+      dateObj: currentDay
+    });
   }
-};
 
-// ==========================================
-// 2. 每日各節次時段定義 (第 1 節 ~ 第 8 節)
-// ==========================================
-const FEISHA_PERIODS = [
-  { period: 1, name: '第 1 節', startTime: '08:20', endTime: '09:05', display: '08:20 - 09:05' },
-  { period: 2, name: '第 2 節', startTime: '09:15', endTime: '10:00', display: '09:15 - 10:00' },
-  { period: 3, name: '第 3 節', startTime: '10:10', endTime: '10:55', display: '10:10 - 10:55' },
-  { period: 4, name: '第 4 節', startTime: '11:05', endTime: '11:50', display: '11:05 - 11:50' },
-  { period: 5, name: '第 5 節', startTime: '13:10', endTime: '13:55', display: '13:10 - 13:55' },
-  { period: 6, name: '第 6 節', startTime: '14:05', endTime: '14:50', display: '14:05 - 14:50' },
-  { period: 7, name: '第 7 節', startTime: '15:00', endTime: '15:45', display: '15:00 - 15:45' },
-  { period: 8, name: '第 8 節', startTime: '16:00', endTime: '16:45', display: '16:00 - 16:45' }
-];
+  return weekDates;
+}
 
-// ==========================================
-// 3. 全校 13 位教師編制與指定兼課超鐘點時段
-// (代碼格式: '星期-節次'，例如 '1-5' 代表週一第 5 節)
-// ==========================================
-const TEACHER_ROSTER = {
-  '阮建安': {
-    title: '701導師',
-    subject: '國文/數學',
-    baseHours: 16,
-    overloadHours: 3,
-    overloadPeriods: ['1-5', '2-1', '3-1'] // 701 社會兼課
-  },
-  '吳靜瑜': {
-    title: '專任教師',
-    subject: '英語',
-    baseHours: 18,
-    overloadHours: 2,
-    overloadPeriods: ['1-8', '3-8'] // 第8節輔導兼課
-  },
-  '蔡明振': {
-    title: '801導師',
-    subject: '國文',
-    baseHours: 16,
-    overloadHours: 3,
-    overloadPeriods: ['1-3', '2-6', '3-6'] // 801 社會兼課
-  },
-  '張碧菁': {
-    title: '901導師',
-    subject: '數學',
-    baseHours: 16,
-    overloadHours: 1,
-    overloadPeriods: ['5-4'] // 701 閩南語兼課
-  },
-  '林威珽': {
-    title: '902導師',
-    subject: '自然',
-    baseHours: 16,
-    overloadHours: 3,
-    overloadPeriods: ['2-4', '3-4', '4-5'] // 資訊/飛海沙/說古道今
-  },
-  '施銘權': {
-    title: '教務組長',
-    subject: '數學',
-    baseHours: 10,
-    overloadHours: 2,
-    overloadPeriods: ['1-7', '4-6'] // 701健康、801健康
-  },
-  '林秋霞': {
-    title: '訓導組長',
-    subject: '體育',
-    baseHours: 10,
-    overloadHours: 1,
-    overloadPeriods: ['2-2'] // 701 體育兼課
-  },
-  '李貞慧': {
-    title: '輔導主任',
-    subject: '社會',
-    baseHours: 2,
-    overloadHours: 4,
-    overloadPeriods: ['1-7', '2-1', '2-4', '4-3'] // 世界之眼與社會兼課
-  },
-  '吳俊德': {
-    title: '總務主任',
-    subject: '生科/健體',
-    baseHours: 2,
-    overloadHours: 2,
-    overloadPeriods: ['1-5', '2-3']
-  },
-  '蔡芷儀': {
-    title: '專任教師',
-    subject: '藝術',
-    baseHours: 18,
-    overloadHours: 0,
-    overloadPeriods: []
-  },
-  '陳文鈴': {
-    title: '專任教師',
-    subject: '綜合/童軍',
-    baseHours: 18,
-    overloadHours: 0,
-    overloadPeriods: []
-  },
-  '蔡麗昭': {
-    title: '專任教師',
-    subject: '自然',
-    baseHours: 18,
-    overloadHours: 2,
-    overloadPeriods: ['3-3', '4-3'] // 902自然、901自然兼課
-  },
-  '鄭宇涵': {
-    title: '資源班導師',
-    subject: '特教',
-    baseHours: 16,
-    overloadHours: 0,
-    overloadPeriods: []
+/**
+ * 渲染週次下拉選單項目
+ */
+function populateWeekSelect() {
+  const select = document.getElementById('weekSelect');
+  if (!select) return;
+
+  const totalWeeks = window.FEISHA_CONFIG_CONSTANTS ? window.FEISHA_CONFIG_CONSTANTS.totalWeeks : 21;
+  select.innerHTML = '';
+
+  for (let w = 1; w <= totalWeeks; w++) {
+    const dates = getWeekDates(w);
+    const startStr = `${dates[0].month}/${dates[0].date}`;
+    const endStr = `${dates[4].month}/${dates[4].date}`;
+    const label = `第 ${w} 週 (${startStr} ~ ${endStr})`;
+
+    const opt = document.createElement('option');
+    opt.value = w;
+    opt.textContent = label;
+    if (w === window.currentWeek) {
+      opt.selected = true;
+    }
+    select.appendChild(opt);
   }
-};
+}
 
-// ==========================================
-// 4. 全校 178 節官方真實基準課表底冊
-// (含 701、801、901、902 四班及學701、學801特教抽離)
-// ==========================================
-const BASELINE_SCHEDULE_MATRIX = [
-  // ─── 701 班 (40 節) ───
-  { id: "SCH_001", classId: "701", day: 1, period: 1, subject: "國文", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_002", classId: "701", day: 1, period: 2, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_003", classId: "701", day: 1, period: 3, subject: "童軍", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "童軍教室" },
-  { id: "SCH_004", classId: "701", day: 1, period: 4, subject: "自然", teacher: "林威珽", isOvertime: false, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_005", classId: "701", day: 1, period: 5, subject: "社會", teacher: "阮建安", isOvertime: true, isAfterschool: false, room: "701教室" },
-  { id: "SCH_006", classId: "701", day: 1, period: 6, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "美術教室" },
-  { id: "SCH_007", classId: "701", day: 1, period: 7, subject: "健康", teacher: "施銘權", isOvertime: true, isAfterschool: false, room: "701教室" },
-  { id: "SCH_008", classId: "701", day: 1, period: 8, subject: "數學_輔", teacher: "施銘權", isOvertime: false, isAfterschool: true, room: "701教室" },
-  { id: "SCH_009", classId: "701", day: 2, period: 1, subject: "社會", teacher: "阮建安", isOvertime: true, isAfterschool: false, room: "701教室" },
-  { id: "SCH_010", classId: "701", day: 2, period: 2, subject: "體育", teacher: "林秋霞", isOvertime: true, isAfterschool: false, room: "操場" },
-  { id: "SCH_011", classId: "701", day: 2, period: 3, subject: "生活科技", teacher: "吳俊德", isOvertime: false, isAfterschool: false, room: "生科教室" },
-  { id: "SCH_012", classId: "701", day: 2, period: 4, subject: "資訊科技", teacher: "林威珽", isOvertime: true, isAfterschool: false, room: "電腦教室" },
-  { id: "SCH_013", classId: "701", day: 2, period: 5, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_014", classId: "701", day: 2, period: 6, subject: "數學", teacher: "施銘權", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_015", classId: "701", day: 2, period: 7, subject: "國文", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_016", classId: "701", day: 2, period: 8, subject: "國文_輔", teacher: "阮建安", isOvertime: false, isAfterschool: true, room: "701教室" },
-  { id: "SCH_017", classId: "701", day: 3, period: 1, subject: "社會", teacher: "阮建安", isOvertime: true, isAfterschool: false, room: "701教室" },
-  { id: "SCH_018", classId: "701", day: 3, period: 2, subject: "國文", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_019", classId: "701", day: 3, period: 3, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "音樂教室" },
-  { id: "SCH_020", classId: "701", day: 3, period: 4, subject: "飛海沙", teacher: "林威珽", isOvertime: true, isAfterschool: false, room: "701教室" },
-  { id: "SCH_021", classId: "701", day: 3, period: 5, subject: "輔導", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "輔導教室" },
-  { id: "SCH_022", classId: "701", day: 3, period: 6, subject: "數學", teacher: "施銘權", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_023", classId: "701", day: 3, period: 7, subject: "藝起繪英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_024", classId: "701", day: 3, period: 8, subject: "自然_輔", teacher: "林威珽", isOvertime: false, isAfterschool: true, room: "理化實驗室" },
-  { id: "SCH_025", classId: "701", day: 4, period: 1, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "美術教室" },
-  { id: "SCH_026", classId: "701", day: 4, period: 2, subject: "體育", teacher: "林秋霞", isOvertime: false, isAfterschool: false, room: "操場" },
-  { id: "SCH_027", classId: "701", day: 4, period: 3, subject: "國文", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_028", classId: "701", day: 4, period: 4, subject: "數學", teacher: "施銘權", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_029", classId: "701", day: 4, period: 5, subject: "家政", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "家政教室" },
-  { id: "SCH_030", classId: "701", day: 4, period: 6, subject: "自然", teacher: "林威珽", isOvertime: false, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_031", classId: "701", day: 4, period: 7, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_032", classId: "701", day: 4, period: 8, subject: "社會_輔", teacher: "阮建安", isOvertime: false, isAfterschool: true, room: "701教室" },
-  { id: "SCH_033", classId: "701", day: 5, period: 1, subject: "數學", teacher: "施銘權", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_034", classId: "701", day: 5, period: 2, subject: "國文", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_035", classId: "701", day: 5, period: 3, subject: "自然", teacher: "林威珽", isOvertime: false, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_036", classId: "701", day: 5, period: 4, subject: "閩南語", teacher: "張碧菁", isOvertime: true, isAfterschool: false, room: "701教室" },
-  { id: "SCH_037", classId: "701", day: 5, period: 5, subject: "飛中藝人", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_038", classId: "701", day: 5, period: 6, subject: "飛中藝人", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_039", classId: "701", day: 5, period: 7, subject: "飛中好品", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "701教室" },
-  { id: "SCH_040", classId: "701", day: 5, period: 8, subject: "英語_輔", teacher: "吳靜瑜", isOvertime: false, isAfterschool: true, room: "701教室" },
+function onWeekSelectChange(value) {
+  window.currentWeek = parseInt(value, 10);
+  renderScheduleGrid();
+}
 
-  // ─── 801 班 (40 節) ───
-  { id: "SCH_041", classId: "801", day: 1, period: 1, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_042", classId: "801", day: 1, period: 2, subject: "體育", teacher: "林秋霞", isOvertime: false, isAfterschool: false, room: "操場" },
-  { id: "SCH_043", classId: "801", day: 1, period: 3, subject: "社會", teacher: "蔡明振", isOvertime: true, isAfterschool: false, room: "801教室" },
-  { id: "SCH_044", classId: "801", day: 1, period: 4, subject: "數學", teacher: "施銘權", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_045", classId: "801", day: 1, period: 5, subject: "生活科技", teacher: "吳俊德", isOvertime: false, isAfterschool: false, room: "生科教室" },
-  { id: "SCH_046", classId: "801", day: 1, period: 6, subject: "自然", teacher: "林威珽", isOvertime: false, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_047", classId: "801", day: 1, period: 7, subject: "國文", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_048", classId: "801", day: 1, period: 8, subject: "國文_輔", teacher: "蔡明振", isOvertime: false, isAfterschool: true, room: "801教室" },
-  { id: "SCH_049", classId: "801", day: 2, period: 1, subject: "童軍", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "童軍教室" },
-  { id: "SCH_050", classId: "801", day: 2, period: 2, subject: "國文", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_051", classId: "801", day: 2, period: 3, subject: "資訊科技", teacher: "林威珽", isOvertime: false, isAfterschool: false, room: "電腦教室" },
-  { id: "SCH_052", classId: "801", day: 2, period: 4, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_053", classId: "801", day: 2, period: 5, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "音樂教室" },
-  { id: "SCH_054", classId: "801", day: 2, period: 6, subject: "社會", teacher: "蔡明振", isOvertime: true, isAfterschool: false, room: "801教室" },
-  { id: "SCH_055", classId: "801", day: 2, period: 7, subject: "數學", teacher: "施銘權", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_056", classId: "801", day: 2, period: 8, subject: "自然_輔", teacher: "林威珽", isOvertime: false, isAfterschool: true, room: "理化實驗室" },
-  { id: "SCH_057", classId: "801", day: 3, period: 1, subject: "自然", teacher: "林威珽", isOvertime: false, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_058", classId: "801", day: 3, period: 2, subject: "輔導", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "輔導教室" },
-  { id: "SCH_059", classId: "801", day: 3, period: 3, subject: "國文", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_060", classId: "801", day: 3, period: 4, subject: "數學", teacher: "施銘權", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_061", classId: "801", day: 3, period: 5, subject: "閩南語", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_062", classId: "801", day: 3, period: 6, subject: "社會", teacher: "蔡明振", isOvertime: true, isAfterschool: false, room: "801教室" },
-  { id: "SCH_063", classId: "801", day: 3, period: 7, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "美術教室" },
-  { id: "SCH_064", classId: "801", day: 3, period: 8, subject: "英語_輔", teacher: "吳靜瑜", isOvertime: false, isAfterschool: true, room: "801教室" },
-  { id: "SCH_065", classId: "801", day: 4, period: 1, subject: "國文", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_066", classId: "801", day: 4, period: 2, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "視聽教室" },
-  { id: "SCH_067", classId: "801", day: 4, period: 3, subject: "體育", teacher: "林秋霞", isOvertime: false, isAfterschool: false, room: "操場" },
-  { id: "SCH_068", classId: "801", day: 4, period: 4, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_069", classId: "801", day: 4, period: 5, subject: "說古道今", teacher: "林威珽", isOvertime: true, isAfterschool: false, room: "801教室" },
-  { id: "SCH_070", classId: "801", day: 4, period: 6, subject: "健康", teacher: "施銘權", isOvertime: true, isAfterschool: false, room: "801教室" },
-  { id: "SCH_071", classId: "801", day: 4, period: 7, subject: "家政", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "家政教室" },
-  { id: "SCH_072", classId: "801", day: 4, period: 8, subject: "數學_輔", teacher: "施銘權", isOvertime: false, isAfterschool: true, room: "801教室" },
-  { id: "SCH_073", classId: "801", day: 5, period: 1, subject: "自然", teacher: "林威珽", isOvertime: false, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_074", classId: "801", day: 5, period: 2, subject: "大藝術家英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_075", classId: "801", day: 5, period: 3, subject: "數學", teacher: "施銘權", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_076", classId: "801", day: 5, period: 4, subject: "國文", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_077", classId: "801", day: 5, period: 5, subject: "飛中藝人", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_078", classId: "801", day: 5, period: 6, subject: "飛中藝人", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_079", classId: "801", day: 5, period: 7, subject: "飛中好品", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "801教室" },
-  { id: "SCH_080", classId: "801", day: 5, period: 8, subject: "社會_輔", teacher: "蔡明振", isOvertime: false, isAfterschool: true, room: "801教室" },
+function navigateWeek(delta) {
+  const totalWeeks = window.FEISHA_CONFIG_CONSTANTS ? window.FEISHA_CONFIG_CONSTANTS.totalWeeks : 21;
+  const targetWeek = window.currentWeek + delta;
 
-  // ─── 901 班 (40 節) ───
-  { id: "SCH_081", classId: "901", day: 1, period: 1, subject: "數學", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_082", classId: "901", day: 1, period: 2, subject: "社會", teacher: "李貞慧", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_083", classId: "901", day: 1, period: 3, subject: "體育", teacher: "林秋霞", isOvertime: false, isAfterschool: false, room: "操場" },
-  { id: "SCH_084", classId: "901", day: 1, period: 4, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "美術教室" },
-  { id: "SCH_085", classId: "901", day: 1, period: 5, subject: "家政", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "家政教室" },
-  { id: "SCH_086", classId: "901", day: 1, period: 6, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_087", classId: "901", day: 1, period: 7, subject: "國文", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_088", classId: "901", day: 1, period: 8, subject: "國文_輔", teacher: "阮建安", isOvertime: false, isAfterschool: true, room: "901教室" },
-  { id: "SCH_089", classId: "901", day: 2, period: 1, subject: "社會", teacher: "李貞慧", isOvertime: true, isAfterschool: false, room: "901教室" },
-  { id: "SCH_090", classId: "901", day: 2, period: 2, subject: "資訊科技", teacher: "林威珽", isOvertime: false, isAfterschool: false, room: "電腦教室" },
-  { id: "SCH_091", classId: "901", day: 2, period: 3, subject: "國文", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_092", classId: "901", day: 2, period: 4, subject: "世界之眼", teacher: "李貞慧", isOvertime: true, isAfterschool: false, room: "901教室" },
-  { id: "SCH_093", classId: "901", day: 2, period: 5, subject: "輔導", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "輔導教室" },
-  { id: "SCH_094", classId: "901", day: 2, period: 6, subject: "數學", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_095", classId: "901", day: 2, period: 7, subject: "自然", teacher: "蔡麗昭", isOvertime: false, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_096", classId: "901", day: 2, period: 8, subject: "數學_輔", teacher: "張碧菁", isOvertime: false, isAfterschool: true, room: "901教室" },
-  { id: "SCH_097", classId: "901", day: 3, period: 1, subject: "自然", teacher: "蔡麗昭", isOvertime: false, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_098", classId: "901", day: 3, period: 2, subject: "健康", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_099", classId: "901", day: 3, period: 3, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_100", classId: "901", day: 3, period: 4, subject: "國文", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_101", classId: "901", day: 3, period: 5, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "視聽教室" },
-  { id: "SCH_102", classId: "901", day: 3, period: 6, subject: "體育", teacher: "林秋霞", isOvertime: false, isAfterschool: false, room: "操場" },
-  { id: "SCH_103", classId: "901", day: 3, period: 7, subject: "數學", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_104", classId: "901", day: 3, period: 8, subject: "社會_輔", teacher: "李貞慧", isOvertime: false, isAfterschool: true, room: "901教室" },
-  { id: "SCH_105", classId: "901", day: 4, period: 1, subject: "國文", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_106", classId: "901", day: 4, period: 2, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_107", classId: "901", day: 4, period: 3, subject: "自然", teacher: "蔡麗昭", isOvertime: true, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_108", classId: "901", day: 4, period: 4, subject: "社會", teacher: "李貞慧", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_109", classId: "901", day: 4, period: 5, subject: "書海飛閱", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_110", classId: "901", day: 4, period: 6, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "音樂教室" },
-  { id: "SCH_111", classId: "901", day: 4, period: 7, subject: "生活科技", teacher: "吳俊德", isOvertime: false, isAfterschool: false, room: "生科教室" },
-  { id: "SCH_112", classId: "901", day: 4, period: 8, subject: "英語_輔", teacher: "吳靜瑜", isOvertime: false, isAfterschool: true, room: "901教室" },
-  { id: "SCH_113", classId: "901", day: 5, period: 1, subject: "數學", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_114", classId: "901", day: 5, period: 2, subject: "童軍", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "童軍教室" },
-  { id: "SCH_115", classId: "901", day: 5, period: 3, subject: "國文", teacher: "阮建安", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_116", classId: "901", day: 5, period: 4, subject: "神遊希臘神話", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_117", classId: "901", day: 5, period: 5, subject: "飛中藝人", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_118", classId: "901", day: 5, period: 6, subject: "飛中藝人", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_119", classId: "901", day: 5, period: 7, subject: "飛中好品", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "901教室" },
-  { id: "SCH_120", classId: "901", day: 5, period: 8, subject: "自然_輔", teacher: "蔡麗昭", isOvertime: false, isAfterschool: true, room: "理化實驗室" },
-
-  // ─── 902 班 (40 節) ───
-  { id: "SCH_121", classId: "902", day: 1, period: 1, subject: "國文", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_122", classId: "902", day: 1, period: 2, subject: "童軍", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "童軍教室" },
-  { id: "SCH_123", classId: "902", day: 1, period: 3, subject: "健康", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_124", classId: "902", day: 1, period: 4, subject: "數學", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_125", classId: "902", day: 1, period: 5, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "視聽教室" },
-  { id: "SCH_126", classId: "902", day: 1, period: 6, subject: "體育", teacher: "林秋霞", isOvertime: false, isAfterschool: false, room: "操場" },
-  { id: "SCH_127", classId: "902", day: 1, period: 7, subject: "世界之眼", teacher: "李貞慧", isOvertime: true, isAfterschool: false, room: "902教室" },
-  { id: "SCH_128", classId: "902", day: 1, period: 8, subject: "英語_輔", teacher: "吳靜瑜", isOvertime: false, isAfterschool: true, room: "902教室" },
-  { id: "SCH_129", classId: "902", day: 2, period: 1, subject: "資訊科技", teacher: "林威珽", isOvertime: false, isAfterschool: false, room: "電腦教室" },
-  { id: "SCH_130", classId: "902", day: 2, period: 2, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_131", classId: "902", day: 2, period: 3, subject: "輔導", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "輔導教室" },
-  { id: "SCH_132", classId: "902", day: 2, period: 4, subject: "國文", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_133", classId: "902", day: 2, period: 5, subject: "社會", teacher: "李貞慧", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_134", classId: "902", day: 2, period: 6, subject: "自然", teacher: "蔡麗昭", isOvertime: false, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_135", classId: "902", day: 2, period: 7, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "美術教室" },
-  { id: "SCH_136", classId: "902", day: 2, period: 8, subject: "國文_輔", teacher: "蔡明振", isOvertime: false, isAfterschool: true, room: "902教室" },
-  { id: "SCH_137", classId: "902", day: 3, period: 1, subject: "國文", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_138", classId: "902", day: 3, period: 2, subject: "體育", teacher: "林秋霞", isOvertime: false, isAfterschool: false, room: "操場" },
-  { id: "SCH_139", classId: "902", day: 3, period: 3, subject: "自然", teacher: "蔡麗昭", isOvertime: true, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_140", classId: "902", day: 3, period: 4, subject: "家政", teacher: "陳文鈴", isOvertime: false, isAfterschool: false, room: "家政教室" },
-  { id: "SCH_141", classId: "902", day: 3, period: 5, subject: "神遊希臘神話", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_142", classId: "902", day: 3, period: 6, subject: "數學", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_143", classId: "902", day: 3, period: 7, subject: "社會", teacher: "李貞慧", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_144", classId: "902", day: 3, period: 8, subject: "數學_輔", teacher: "張碧菁", isOvertime: false, isAfterschool: true, room: "902教室" },
-  { id: "SCH_145", classId: "902", day: 4, period: 1, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_146", classId: "902", day: 4, period: 2, subject: "國文", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_147", classId: "902", day: 4, period: 3, subject: "社會", teacher: "李貞慧", isOvertime: true, isAfterschool: false, room: "902教室" },
-  { id: "SCH_148", classId: "902", day: 4, period: 4, subject: "數學", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_149", classId: "902", day: 4, period: 5, subject: "書海飛閱", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_150", classId: "902", day: 4, period: 6, subject: "生活科技", teacher: "吳俊德", isOvertime: false, isAfterschool: false, room: "生科教室" },
-  { id: "SCH_151", classId: "902", day: 4, period: 7, subject: "藝術", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "音樂教室" },
-  { id: "SCH_152", classId: "902", day: 4, period: 8, subject: "自然_輔", teacher: "蔡麗昭", isOvertime: false, isAfterschool: true, room: "理化實驗室" },
-  { id: "SCH_153", classId: "902", day: 5, period: 1, subject: "英語", teacher: "吳靜瑜", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_154", classId: "902", day: 5, period: 2, subject: "數學", teacher: "張碧菁", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_155", classId: "902", day: 5, period: 3, subject: "國文", teacher: "蔡明振", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_156", classId: "902", day: 5, period: 4, subject: "自然", teacher: "蔡麗昭", isOvertime: false, isAfterschool: false, room: "理化實驗室" },
-  { id: "SCH_157", classId: "902", day: 5, period: 5, subject: "飛中藝人", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_158", classId: "902", day: 5, period: 6, subject: "飛中藝人", teacher: "蔡芷儀", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_159", classId: "902", day: 5, period: 7, subject: "飛中好品", teacher: "林威珽", isOvertime: false, isAfterschool: false, room: "902教室" },
-  { id: "SCH_160", classId: "902", day: 5, period: 8, subject: "社會_輔", teacher: "李貞慧", isOvertime: false, isAfterschool: true, room: "902教室" },
-
-  // ─── 學701 (特教抽離 11 節) ───
-  { id: "SCH_161", classId: "學701", day: 1, period: 1, subject: "國文", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_162", classId: "學701", day: 2, period: 6, subject: "數學", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_163", classId: "學701", day: 2, period: 7, subject: "國文", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_164", classId: "學701", day: 3, period: 1, subject: "學習策略", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_165", classId: "學701", day: 3, period: 2, subject: "國文", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_166", classId: "學701", day: 3, period: 6, subject: "數學", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_167", classId: "學701", day: 4, period: 3, subject: "國文", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_168", classId: "學701", day: 4, period: 4, subject: "數學", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_169", classId: "學701", day: 5, period: 1, subject: "數學", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_170", classId: "學701", day: 5, period: 2, subject: "國文", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_171", classId: "學701", day: 5, period: 7, subject: "社會技巧", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-
-  // ─── 學801 (特教抽離 7 節) ───
-  { id: "SCH_172", classId: "學801", day: 1, period: 7, subject: "國文", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_173", classId: "學801", day: 2, period: 2, subject: "國文", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_174", classId: "學801", day: 3, period: 1, subject: "學習策略", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_175", classId: "學801", day: 3, period: 3, subject: "國文", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_176", classId: "學801", day: 4, period: 1, subject: "國文", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_177", classId: "學801", day: 5, period: 4, subject: "國文", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" },
-  { id: "SCH_178", classId: "學801", day: 5, period: 7, subject: "社會技巧", teacher: "鄭宇涵", isOvertime: false, isAfterschool: false, isSpecialEd: true, room: "資源教室" }
-];
-
-// 相容別名對照表 (確保雲端與舊格式 林𡶙鋌 / 林山戊鋌 皆能對應到 林威珽)
-BASELINE_SCHEDULE_MATRIX.forEach(item => {
-  if (item.teacher === '林𡶙鋌' || item.teacher === '林山戊鋌') {
-    item.teacher = '林威珽';
+  if (targetWeek >= 1 && targetWeek <= totalWeeks) {
+    window.currentWeek = targetWeek;
+    const select = document.getElementById('weekSelect');
+    if (select) select.value = window.currentWeek;
+    renderScheduleGrid();
   }
-  // 雙向相容屬性命名
-  item.class_id = item.classId;
-  item.is_overtime = item.isOvertime;
-  item.is_afterschool = item.isAfterschool;
-  item.is_special_ed = item.isSpecialEd || false;
-});
+}
 
-// 匯出至全域視窗物件
-window.FEISHA_CONFIG_CONSTANTS = FEISHA_CONFIG_CONSTANTS;
-window.FEISHA_PERIODS = FEISHA_PERIODS;
-window.TEACHER_ROSTER = TEACHER_ROSTER;
-window.BASELINE_SCHEDULE_MATRIX = BASELINE_SCHEDULE_MATRIX;
+function goToCurrentWeek() {
+  initAcademicWeek();
+}
+
+// ==========================================
+// 3. 檢視模式切換器 (依班級 / 依教師)
+// ==========================================
+function initScheduleTargetSelect() {
+  const targetSelect = document.getElementById('targetSelect');
+  if (!targetSelect) return;
+
+  if (window.scheduleViewMode === 'class') {
+    targetSelect.innerHTML = `
+      <option value="701">701 班課表</option>
+      <option value="801" selected>801 班課表</option>
+      <option value="901">901 班課表</option>
+      <option value="902">902 班課表</option>
+    `;
+  } else {
+    const roster = window.TEACHER_ROSTER || {};
+    let options = '';
+    Object.keys(roster).forEach(name => {
+      const isWu = name === '吳靜瑜' ? 'selected' : '';
+      options += `<option value="${name}" ${isWu}>${name} 老師課表 (${roster[name].title})</option>`;
+    });
+    targetSelect.innerHTML = options;
+  }
+}
+
+function setViewMode(mode) {
+  window.scheduleViewMode = mode;
+  const classBtn = document.getElementById('viewModeClassBtn');
+  const teacherBtn = document.getElementById('viewModeTeacherBtn');
+
+  if (mode === 'class') {
+    if (classBtn) classBtn.className = "px-3 py-1 rounded-md bg-white shadow text-slate-800 transition font-bold";
+    if (teacherBtn) teacherBtn.className = "px-3 py-1 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold";
+  } else {
+    if (teacherBtn) teacherBtn.className = "px-3 py-1 rounded-md bg-white shadow text-slate-800 transition font-bold";
+    if (classBtn) classBtn.className = "px-3 py-1 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold";
+  }
+
+  initScheduleTargetSelect();
+  renderScheduleGrid();
+}
+
+// ==========================================
+// 4. 動態課表網格渲染引擎
+// ==========================================
+function renderScheduleGrid() {
+  const thead = document.getElementById('scheduleThead');
+  const tbody = document.getElementById('scheduleTbody');
+  const overloadCard = document.getElementById('teacherOverloadCard');
+  const targetSelect = document.getElementById('targetSelect');
+
+  if (!thead || !tbody || !targetSelect) return;
+
+  const currentWeek = window.currentWeek || 1;
+  const scheduleViewMode = window.scheduleViewMode || 'class';
+  const currentTarget = targetSelect.value || (scheduleViewMode === 'class' ? '801' : '吳靜瑜');
+  const weekDates = getWeekDates(currentWeek);
+  const weekdayNames = ['週一', '週二', '週三', '週四', '週五'];
+  const roster = window.TEACHER_ROSTER || {};
+  const baselineMatrix = window.BASELINE_SCHEDULE_MATRIX || [];
+  const periodsConfig = window.FEISHA_PERIODS || [];
+
+  // A. 表頭渲染
+  const today = new Date();
+  const currentRocToday = `${today.getFullYear() - 1911}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+
+  let theadHtml = `
+    <tr>
+      <th class="py-3 px-2 text-xs font-bold text-slate-500 border-r border-slate-200 w-20 bg-slate-50">節次</th>
+  `;
+
+  weekdayNames.forEach((wName, index) => {
+    const dInfo = weekDates[index];
+    const isToday = dInfo.fullRoc === currentRocToday;
+    theadHtml += `
+      <th class="py-3 px-2 text-xs border-r border-slate-200 transition ${isToday ? 'bg-indigo-50/80 text-indigo-900 font-extrabold' : 'text-slate-700 font-bold'}">
+        <div class="flex items-center justify-center gap-1.5">
+          <span>${wName}</span>
+          ${isToday ? '<span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-ping"></span>' : ''}
+        </div>
+        <div class="text-[11px] font-mono mt-0.5 ${isToday ? 'text-indigo-600 font-bold' : 'text-slate-400'}">
+          ${dInfo.month}/${dInfo.date}
+        </div>
+      </th>
+    `;
+  });
+  theadHtml += `</tr>`;
+  thead.innerHTML = theadHtml;
+
+  // B. 教師兼課明細卡片控制
+  if (scheduleViewMode === 'teacher' && roster[currentTarget]) {
+    const tConfig = roster[currentTarget];
+    overloadCard.classList.remove('hidden');
+
+    document.getElementById('cardTeacherName').textContent = `${currentTarget} 老師`;
+    document.getElementById('cardTeacherTitle').textContent = tConfig.title;
+    document.getElementById('cardWorkloadSummary').textContent = 
+      `每週排課：基本授課 ${tConfig.baseHours} 節 ＋ 兼課超鐘點 ${tConfig.overloadHours} 節 ＝ 每週總授課 ${tConfig.baseHours + tConfig.overloadHours} 節`;
+
+    const dayNameMap = { '1': '週一', '2': '週二', '3': '週三', '4': '週四', '5': '週五' };
+    let badgesHtml = '';
+
+    (tConfig.overloadPeriods || []).forEach(pCode => {
+      const [d, p] = pCode.split('-');
+      badgesHtml += `
+        <span class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-bold shadow-xs">
+          ⚡ ${dayNameMap[d] || d} 第 ${p} 節 (超鐘點兼課)
+        </span>
+      `;
+    });
+
+    document.getElementById('cardOverloadPeriodsList').innerHTML = badgesHtml || '<span class="text-xs text-slate-400">本學期未排定固定兼課超額</span>';
+  } else {
+    overloadCard.classList.add('hidden');
+  }
+
+  // C. 節次課堂渲染 (第 1 節 ~ 第 8 節)
+  let tbodyHtml = '';
+
+  periodsConfig.forEach(periodItem => {
+    const pNum = periodItem.period;
+    const isEighth = pNum === 8;
+
+    tbodyHtml += `
+      <tr class="hover:bg-slate-50/60 transition ${isEighth ? 'bg-purple-50/20' : ''}">
+        <td class="py-2 px-2 border-r border-slate-200 bg-slate-50/80 text-center align-middle">
+          <div class="text-xs font-bold ${isEighth ? 'text-purple-900' : 'text-slate-700'}">${periodItem.name}</div>
+          <div class="text-[10px] text-slate-400 font-mono mt-0.5">${periodItem.startTime}</div>
+          <div class="text-[10px] text-slate-400 font-mono">${periodItem.endTime}</div>
+          ${isEighth ? '<span class="inline-block mt-1 text-[9px] px-1 bg-purple-100 text-purple-700 font-bold rounded">第八節</span>' : ''}
+        </td>
+    `;
+
+    for (let dayIdx = 1; dayIdx <= 5; dayIdx++) {
+      const dateInfo = weekDates[dayIdx - 1];
+      const rocDateStr = dateInfo.fullRoc;
+      const periodKey = `${dayIdx}-${pNum}`;
+
+      // 檢索官方真實課表底冊
+      let baseClass = null;
+      if (scheduleViewMode === 'class') {
+        baseClass = baselineMatrix.find(b => b.classId === currentTarget && b.day === dayIdx && b.period === pNum);
+      } else {
+        baseClass = baselineMatrix.find(b => b.teacher === currentTarget && b.day === dayIdx && b.period === pNum);
+      }
+
+      // 檢索排代
+      const activeTask = (window.appData?.tasks || []).find(t => {
+        const isDateMatch = String(t.date).trim() === rocDateStr;
+        if (!isDateMatch) return false;
+        const isPeriodMatch = (
+          Number(t.period) === pNum ||
+          String(t.classPeriod).includes(`第${pNum}節`) ||
+          String(t.classPeriod).endsWith(`/${pNum}`)
+        );
+        if (!isPeriodMatch) return false;
+        return scheduleViewMode === 'class' ? String(t.classPeriod).includes(currentTarget) : (t.subTeacher === currentTarget || t.origTeacher === currentTarget);
+      });
+
+      // 檢索調課
+      const activeSwap = (window.appData?.swaps || []).find(s => {
+        const isOrigMatch = String(s.origDate).trim() === rocDateStr && Number(s.origPeriod) === pNum;
+        const isTargetMatch = String(s.targetDate).trim() === rocDateStr && Number(s.targetPeriod) === pNum;
+        if (scheduleViewMode === 'class') {
+          return (isOrigMatch && String(s.origClassSubject).includes(currentTarget)) || (isTargetMatch && String(s.targetClassSubject).includes(currentTarget));
+        } else {
+          return (isOrigMatch && (s.origTeacher === currentTarget || s.targetTeacher === currentTarget)) || (isTargetMatch && (s.origTeacher === currentTarget || s.targetTeacher === currentTarget));
+        }
+      });
+
+      let isOverload = false;
+      if (scheduleViewMode === 'teacher' && roster[currentTarget]) {
+        isOverload = (roster[currentTarget].overloadPeriods || []).includes(periodKey);
+      }
+
+      tbodyHtml += `<td class="py-2 px-2 border-r border-slate-200 h-20 align-middle text-left relative">`;
+
+      if (activeTask) {
+        tbodyHtml += `
+          <div class="p-2 rounded-lg bg-emerald-50 border border-emerald-300 text-xs shadow-xs space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-emerald-950 truncate">${activeTask.subject || '代課'}</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-200 text-emerald-800 font-bold">公費代</span>
+            </div>
+            <div class="text-[11px] text-emerald-800 font-semibold truncate">代課師：${activeTask.subTeacher}</div>
+            <div class="text-[10px] text-emerald-600 truncate">原任：${activeTask.origTeacher}</div>
+          </div>
+        `;
+      } else if (activeSwap) {
+        tbodyHtml += `
+          <div class="p-2 rounded-lg bg-indigo-50 border border-indigo-300 text-xs shadow-xs space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-indigo-950 truncate">互調課</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-200 text-indigo-800 font-bold">調課</span>
+            </div>
+            <div class="text-[11px] text-indigo-800 truncate">${activeSwap.origTeacher} ⇄ ${activeSwap.targetTeacher}</div>
+          </div>
+        `;
+      } else if (baseClass) {
+        tbodyHtml += `
+          <div class="p-1.5 rounded-lg border border-transparent hover:border-slate-300 transition text-xs">
+            <div class="flex items-center justify-between gap-1">
+              <span class="font-bold text-slate-800 text-xs">${baseClass.subject}</span>
+              ${isOverload || baseClass.isOvertime ? `
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                  ⚡兼課
+                </span>
+              ` : ''}
+            </div>
+            <div class="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+              <span>${scheduleViewMode === 'class' ? baseClass.teacher : baseClass.classId + '班'}</span>
+              <span class="text-[10px] text-slate-400 font-mono">${baseClass.room || ''}</span>
+            </div>
+          </div>
+        `;
+      } else {
+        tbodyHtml += `<div class="h-full flex items-center justify-center text-slate-300 text-xs"><span>—</span></div>`;
+      }
+
+      tbodyHtml += `</td>`;
+    }
+
+    tbodyHtml += `</tr>`;
+  });
+
+  tbody.innerHTML = tbodyHtml;
+}
+
+// 匯出至全域
+window.initAcademicWeek = initAcademicWeek;
+window.getWeekDates = getWeekDates;
+window.populateWeekSelect = populateWeekSelect;
+window.onWeekSelectChange = onWeekSelectChange;
+window.navigateWeek = navigateWeek;
+window.goToCurrentWeek = goToCurrentWeek;
+window.setViewMode = setViewMode;
+window.renderScheduleGrid = renderScheduleGrid;
