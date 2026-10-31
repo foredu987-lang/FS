@@ -1,23 +1,15 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
  * 課務排代、調課與月結管理系統 - 雲端試算表與 Google 日曆連動模組 (js/cloud.js)
- * 職責：與 Google Apps Script Web App 進行 GET/POST 資料交換、雲端雙向同步、日曆連動與狀態維護
+ * 升級：支援從 Google 試算表拉取動態全校課表與教師編制名冊
  */
 
-// ==========================================
-// 1. 模組內部狀態與防手震定時器
-// ==========================================
+const STORAGE_KEY_CUSTOM_SCHEDULE = 'feisha_schedule_matrix_115_1';
+const STORAGE_KEY_CUSTOM_ROSTER = 'feisha_teacher_roster_115_1';
+
 let isSyncing = false;
 let syncDebounceTimer = null;
 
-// ==========================================
-// 2. 從雲端 Google 試算表拉取資料 (Pull)
-// ==========================================
-
-/**
- * 發送 GET 請求向 Google Apps Script 獲取最新 tasks 與 swaps
- * @param {boolean} isSilent - 是否靜默同步 (不彈出成功提示視窗)
- */
 function pullFromCloud(isSilent = false) {
   const apiUrl = window.appData?.config?.apiUrl?.trim();
 
@@ -44,50 +36,54 @@ function pullFromCloud(isSilent = false) {
     cache: 'no-cache'
   })
   .then(response => {
-    if (!response.ok) {
-      throw new Error(`HTTP 錯誤碼：${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP 錯誤碼：${response.status}`);
     return response.json();
   })
   .then(data => {
     isSyncing = false;
 
     if (data && data.status === 'success') {
-      // 1. 嚴格過濾空資料與格式錯位行
-      const validTasks = (data.tasks || []).filter(item => {
-        if (!item || typeof item !== 'object') return false;
-        const hasSub = item.subTeacher && String(item.subTeacher).trim() !== '';
-        const hasDate = item.date && String(item.date).trim() !== '';
-        const isDateShifted = String(item.date).includes('週');
-        const isNameInType = ['蔡明振', '林秋霞', '吳靜瑜', '李貞慧', '施銘權'].includes(item.type);
-        return hasSub && hasDate && !isDateShifted && !isNameInType;
-      });
+      // 1. 同步排代清冊 (tasks)
+      const rawTasks = Array.isArray(data.tasks) ? data.tasks : [];
+      window.appData.tasks = rawTasks.filter(t => t && t.subTeacher && t.date);
 
-      const validSwaps = Array.isArray(data.swaps) ? data.swaps : [];
+      // 2. 同步調課紀錄 (swaps)
+      window.appData.swaps = Array.isArray(data.swaps) ? data.swaps : [];
 
-      // 2. 更新全域狀態
-      window.appData.tasks = validTasks;
-      window.appData.swaps = validSwaps;
-
-      // 3. 持久化至本地快取
-      if (typeof saveToLocalStorage === 'function') {
-        saveToLocalStorage();
+      // 3. 同步全校課表 (schedule)
+      if (Array.isArray(data.schedule) && data.schedule.length > 0) {
+        window.BASELINE_SCHEDULE_MATRIX = data.schedule;
+        localStorage.setItem(STORAGE_KEY_CUSTOM_SCHEDULE, JSON.stringify(data.schedule));
       }
 
-      // 4. 全面重新渲染相依介面
+      // 4. 同步教師編制名冊 (roster)
+      if (data.roster && Object.keys(data.roster).length > 0) {
+        window.TEACHER_ROSTER = data.roster;
+        localStorage.setItem(STORAGE_KEY_CUSTOM_ROSTER, JSON.stringify(data.roster));
+      }
+
+      // 儲存基本資料
+      if (typeof saveToLocalStorage === 'function') saveToLocalStorage();
+
+      // 全面刷新所有介面
+      if (typeof renderRosterTable === 'function') renderRosterTable();
+      if (typeof initTeacherSelects === 'function') initTeacherSelects();
+      if (typeof initScheduleTargetSelect === 'function') initScheduleTargetSelect();
+      if (typeof renderScheduleGrid === 'function') renderScheduleGrid();
       if (typeof renderTasksTable === 'function') renderTasksTable();
       if (typeof renderSwapsTable === 'function') renderSwapsTable();
-      if (typeof renderScheduleGrid === 'function') renderScheduleGrid();
       if (typeof renderReportTable === 'function') renderReportTable();
+      if (typeof renderAssignmentMatrix === 'function') renderAssignmentMatrix();
 
-      // 5. 更新連線燈號
       if (statusDot && statusText) {
         statusDot.className = "w-2 h-2 rounded-full bg-emerald-400";
         statusText.textContent = "雲端同步已連線";
       }
 
       if (!isSilent) {
-        alert(`✅ 雲端拉取成功！\n共載入 ${validTasks.length} 筆排代紀錄與 ${validSwaps.length} 筆互調課紀錄。`);
+        var schedCount = Array.isArray(data.schedule) ? data.schedule.length : 0;
+        var rosterCount = data.roster ? Object.keys(data.roster).length : 0;
+        alert(`✅ 雲端資料同步完成！\n• 排代紀錄：${window.appData.tasks.length} 筆\n• 全校課表：${schedCount} 堂\n• 教師編制：${rosterCount} 位`);
       }
     } else {
       throw new Error(data?.message || '後端回傳格式異常');
@@ -95,7 +91,7 @@ function pullFromCloud(isSilent = false) {
   })
   .catch(err => {
     isSyncing = false;
-    console.warn('⚠️ 雲端拉取失敗，系統已自動維持本機離線快取：', err);
+    console.warn('⚠️ 雲端拉取失敗：', err);
 
     if (statusDot && statusText) {
       statusDot.className = "w-2 h-2 rounded-full bg-rose-400";
@@ -103,35 +99,22 @@ function pullFromCloud(isSilent = false) {
     }
 
     if (!isSilent) {
-      alert(`❌ 無法連線至 Google Apps Script：\n${err.message}\n\n排查建議：\n1. 確認 Apps Script 部署設定中的「誰可以存取」已設為「所有人 (Anyone)」。\n2. 確認瀏覽器未封鎖跨來源請求。`);
+      alert(`❌ 無法連線至 Google Apps Script：\n${err.message}`);
     }
   });
 }
 
-// ==========================================
-// 3. 推送本地資料至雲端試算表與日曆 (Push)
-// ==========================================
-
-/**
- * 發送 POST 請求將本地完整的 tasks 與 swaps 推送至後端
- * 包含 500ms 防手震機制，避免連續新增時大量呼叫 API
- */
 function pushToCloud() {
   const apiUrl = window.appData?.config?.apiUrl?.trim();
   if (!apiUrl || !apiUrl.startsWith('http')) return;
 
-  if (syncDebounceTimer) {
-    clearTimeout(syncDebounceTimer);
-  }
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
 
   syncDebounceTimer = setTimeout(() => {
     executePushRequest(apiUrl);
   }, 500);
 }
 
-/**
- * 實際執行 POST 推播
- */
 function executePushRequest(apiUrl) {
   const statusDot = document.getElementById('cloudStatusDot');
   const statusText = document.getElementById('cloudStatusText');
@@ -151,14 +134,11 @@ function executePushRequest(apiUrl) {
 
   fetch(apiUrl, {
     method: 'POST',
-    mode: 'no-cors', // 解決 Apps Script 跨域重新導向 (302) 限制
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
-    },
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
   })
   .then(() => {
-    // no-cors 模式下狀態碼為 opaque (0)，成功送達即代表完成
     if (statusDot && statusText) {
       statusDot.className = "w-2 h-2 rounded-full bg-emerald-400";
       statusText.textContent = "雲端同步已連線";
@@ -174,8 +154,5 @@ function executePushRequest(apiUrl) {
   });
 }
 
-// ==========================================
-// 4. 匯出至全域視窗物件
-// ==========================================
 window.pullFromCloud = pullFromCloud;
 window.pushToCloud = pushToCloud;

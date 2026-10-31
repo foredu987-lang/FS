@@ -1,12 +1,14 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
  * 課務排代、調課與月結管理系統 - 核心主控與狀態管理模組 (js/app.js)
- * 修正：加入全區塊 try-catch 攔截、防止 DOMContentLoaded 中斷、開頁主動繪製課表網格
+ * 升級：開頁優先載入雲端同步至本機的動態課表與教師編制
  */
 
 const STORAGE_KEY_TASKS = 'feisha_tasks_115_1';
 const STORAGE_KEY_SWAPS = 'feisha_swaps_115_1';
 const STORAGE_KEY_CONFIG = 'feisha_config_115_1';
+const STORAGE_KEY_CUSTOM_SCHEDULE = 'feisha_schedule_matrix_115_1';
+const STORAGE_KEY_CUSTOM_ROSTER = 'feisha_teacher_roster_115_1';
 
 window.appData = {
   tasks: [],
@@ -25,7 +27,6 @@ window.addEventListener('DOMContentLoaded', () => {
     renderRosterTable();
     updateCloudStatus();
 
-    // 關鍵修復：主動觸發週次與課表網格生成
     if (typeof initAcademicWeek === 'function') {
       initAcademicWeek();
     } else if (typeof renderScheduleGrid === 'function') {
@@ -45,6 +46,24 @@ function loadFromLocalStorage() {
     const savedConfig = localStorage.getItem(STORAGE_KEY_CONFIG);
     const savedTasks = localStorage.getItem(STORAGE_KEY_TASKS);
     const savedSwaps = localStorage.getItem(STORAGE_KEY_SWAPS);
+    const savedSchedule = localStorage.getItem(STORAGE_KEY_CUSTOM_SCHEDULE);
+    const savedRoster = localStorage.getItem(STORAGE_KEY_CUSTOM_ROSTER);
+
+    // 1. 若本機快取中有從雲端試算表拉取的課表，優先套用
+    if (savedSchedule) {
+      const parsedSched = JSON.parse(savedSchedule);
+      if (Array.isArray(parsedSched) && parsedSched.length > 0) {
+        window.BASELINE_SCHEDULE_MATRIX = parsedSched;
+      }
+    }
+
+    // 2. 若本機快取中有從雲端試算表拉取的教師名冊，優先套用
+    if (savedRoster) {
+      const parsedRoster = JSON.parse(savedRoster);
+      if (parsedRoster && Object.keys(parsedRoster).length > 0) {
+        window.TEACHER_ROSTER = parsedRoster;
+      }
+    }
 
     if (savedConfig) {
       window.appData.config = Object.assign(window.appData.config, JSON.parse(savedConfig));
@@ -77,16 +96,16 @@ function saveToLocalStorage() {
 }
 
 function confirmResetLocalStorage() {
-  if (window.confirm('⚠️ 確定要徹底清空本機暫存嗎？')) {
+  if (window.confirm('⚠️ 確定要徹底清空本機暫存嗎？此動作將清除自訂課表快取並回復系統預設底冊。')) {
     localStorage.removeItem(STORAGE_KEY_TASKS);
     localStorage.removeItem(STORAGE_KEY_SWAPS);
+    localStorage.removeItem(STORAGE_KEY_CUSTOM_SCHEDULE);
+    localStorage.removeItem(STORAGE_KEY_CUSTOM_ROSTER);
     window.appData.tasks = [];
     window.appData.swaps = [];
-    if (typeof renderTasksTable === 'function') renderTasksTable();
-    if (typeof renderSwapsTable === 'function') renderSwapsTable();
-    if (typeof renderScheduleGrid === 'function') renderScheduleGrid();
-    if (typeof renderReportTable === 'function') renderReportTable();
-    alert('✅ 本機快取已徹底清空！');
+    
+    // 重新載入頁面回復初始值
+    window.location.reload();
   }
 }
 
