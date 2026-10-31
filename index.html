@@ -188,6 +188,11 @@
           </optgroup>
         </select>
 
+        <!-- Google 共同行事曆直達按鈕 -->
+        <a href="https://calendar.google.com/calendar/r?cid=c_9f7d9e917c79ee2de6f54ed275f97d9bfdb493ba457a0135b69438213e217ba6%40group.calendar.google.com" target="_blank" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-amber-300 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 shadow" title="開啟飛沙國中 Google 共同日曆">
+          <span>📅</span> 共同日曆
+        </a>
+
         <!-- 雲端試算表連線狀態按鈕 -->
         <button onclick="openModal('modalCloudSync')" id="btnCloudSyncStatus" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 shadow" title="設定 Google 試算表同步">
           <span id="cloudSyncDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
@@ -306,6 +311,9 @@
           </button>
           <button onclick="openModal('modalSubCalculator')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded transition font-medium">
             ➕ 手動新增 1 筆排代
+          </button>
+          <button onclick="openClearConfirmModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 px-2.5 py-1.5 rounded transition font-medium flex items-center gap-1" title="徹底清空本機殘留之舊版錯位快取">
+            <span>🗑️</span> 清空舊暫存重置
           </button>
         </div>
 
@@ -1028,6 +1036,28 @@
     </div>
   </div>
 
+  <!-- Modal 9：清空本機舊資料確認彈窗 (無原生 confirm 阻擋) -->
+  <div id="modalConfirmClear" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200">
+      <div class="bg-rose-600 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <span>🗑️</span> 清空本機舊版排代暫存
+        </h3>
+        <button onclick="closeModal('modalConfirmClear')" class="text-white hover:text-rose-200 text-lg">✕</button>
+      </div>
+      <div class="p-5 space-y-3 text-xs text-slate-700">
+        <p class="font-bold text-slate-900">確定要清空瀏覽器中的所有排代快取嗎？</p>
+        <p class="text-slate-500 leading-relaxed text-[11px]">
+          這將清除先前因格式變更殘留的錯位舊資料（如：蔡明振跑到種類欄、週三等），讓系統徹底歸零，以便您重新上傳乾淨的標準 12 欄 CSV。
+        </p>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-200">
+          <button onclick="closeModal('modalConfirmClear')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3.5 py-1.5 rounded-lg transition">取消</button>
+          <button onclick="executeClearLocalDatabase()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-1.5 rounded-lg transition shadow">確認徹底清空</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 浮動通知 Toast -->
   <div id="toastNotification" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-slate-700 text-xs font-medium flex items-center gap-2 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none">
     <span id="toastIcon">✅</span>
@@ -1216,7 +1246,16 @@
         if (rawTasks) {
           const parsed = JSON.parse(rawTasks);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            appData.tasks = parsed;
+            // 🛡️ 智慧過濾守衛：自動踢除舊版欄位錯位的髒資料（種類是人名、日期是星期文字等）
+            const teacherNames = OFFICIAL_TEACHERS.map(x => x.name);
+            const validTasks = parsed.filter(t => {
+              if (!t || !t.date) return false;
+              if (teacherNames.includes(t.category)) return false;
+              if (t.date.includes("週") || t.date === "null" || t.periodsCount === null) return false;
+              return true;
+            });
+            appData.tasks = validTasks;
+            saveToLocalStorage();
           }
         }
         if (rawSwaps) {
@@ -1228,6 +1267,30 @@
       } catch (e) {
         console.warn("LocalStorage load error:", e);
       }
+    }
+
+    function openClearConfirmModal() {
+      openModal("modalConfirmClear");
+    }
+
+    function executeClearLocalDatabase() {
+      closeModal("modalConfirmClear");
+      localStorage.removeItem(LOCAL_STORAGE_TASKS_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_SWAPS_KEY);
+      appData.tasks = [];
+      appData.swaps = [];
+
+      renderTasksTable();
+      renderReportTable();
+      renderScheduleGrid(appData.currentScheduleClass);
+      renderRadarWorkspace();
+
+      // 若雲端有連線，同步覆蓋清空雲端
+      if (getCloudGasUrl()) {
+        pushToCloud({ action: "syncAll", tasks: [], swaps: [] }, false);
+      }
+
+      showToast("已徹底清空舊暫存！目前系統為乾淨空白狀態");
     }
 
     // ==========================================
