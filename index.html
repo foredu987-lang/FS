@@ -296,24 +296,25 @@
       </div>
     </section>
 
-    <!-- ========== 模組 2：標準 13 欄代課清冊 ========== -->
-    <section id="tabTasks" class="tab-content hidden space-y-4">
+      <!-- ========== 模組 2：標準 13 欄代課清冊 ========== -->
+      <!-- 標題調整為標準 12 欄清冊規格 -->
+      <section id="tabTasks" class="tab-content hidden space-y-4">
       <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="tasksViewTitle" class="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <span>📑</span> 標準 13 欄公課排代與代導總冊
+            <span>📑</span> 標準 12 欄公課排代與代導總冊
           </h2>
-          <p id="tasksViewSubtitle" class="text-xs text-slate-500 mt-0.5">每列最多 1 堂 (0或1節) • 民國 7 碼純數字 (1151006) • 權威姓名唯一鍵：林𡶙鋌 • 銷假即時同步還原課表</p>
+          <p id="tasksViewSubtitle" class="text-xs text-slate-500 mt-0.5">每列最多 1 堂 (0或1節) • 民國 7 碼純數字 (1151006) • 種類細分 公(婚)、公(喪)、公(研習) • 班級/堂移至第12欄末位標註</p>
         </div>
 
         <!-- 管理員功能按鈕列 -->
         <div id="tasksAdminButtons" class="flex flex-wrap items-center gap-2 text-xs">
           <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleRealCsvUpload(event)">
           <button onclick="document.getElementById('csvFileInput').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1 shadow-sm">
-            <span>📥</span> 上傳標準 13 欄清冊 (CSV)
+            <span>📥</span> 上傳標準 12 欄清冊 (CSV)
           </button>
           <button onclick="simulateLegacyCsvUpload()" class="bg-rose-100 text-rose-800 border border-rose-300 hover:bg-rose-200 px-3 py-1.5 rounded transition font-medium">
-            ⚠️ 模擬上傳舊版 11 欄 (退件展示)
+            ⚠️ 模擬上傳舊格式 (退件展示)
           </button>
           <button onclick="triggerConflictWizardDemo()" class="bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 px-3 py-1.5 rounded transition font-medium">
             🟡 模擬衝突檢核精靈 (動態對照)
@@ -331,24 +332,23 @@
         </div>
       </div>
 
-      <!-- 13 欄表格 -->
+      <!-- 12 欄表格 (操作欄位獨立於最右側) -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
         <table class="w-full text-xs text-left border-collapse">
           <thead class="bg-slate-100 text-slate-700 uppercase font-bold border-b border-slate-200">
             <tr>
-              <th class="p-2.5">1.代課人</th>
-              <th class="p-2.5">2.職稱</th>
-              <th class="p-2.5">3.核准文號</th>
-              <th class="p-2.5">4.日期(7碼)</th>
-              <th class="p-2.5">5.星期</th>
-              <th class="p-2.5">6.班級/堂</th>
-              <th class="p-2.5 text-center">7.節數</th>
-              <th class="p-2.5 text-right">8.鐘點費</th>
-              <th class="p-2.5 text-right">9.代導費</th>
-              <th class="p-2.5 text-right">10.應領金額</th>
-              <th class="p-2.5">11.被代教師</th>
-              <th class="p-2.5">12.請假事由</th>
-              <th class="p-2.5">13.獨立備註</th>
+              <th class="p-2.5">1.種類</th>
+              <th class="p-2.5">2.代課人姓名</th>
+              <th class="p-2.5">3.職稱</th>
+              <th class="p-2.5">4.核准文號</th>
+              <th class="p-2.5">5.代課日期</th>
+              <th class="p-2.5 text-center">6.代課節數</th>
+              <th class="p-2.5 text-right">7.每節鐘點費</th>
+              <th class="p-2.5 text-right">8.代理導師費</th>
+              <th class="p-2.5 text-right">9.應領金額</th>
+              <th class="p-2.5">10.被代課教師</th>
+              <th class="p-2.5">11.代課事由</th>
+              <th class="p-2.5">12.班級/堂</th>
               <th class="p-2.5 text-center">操作</th>
             </tr>
           </thead>
@@ -416,18 +416,44 @@
             <input type="text" id="radarDocNoInput" value="115年9月2日府教課二字第1152442203號" class="w-full border border-slate-300 rounded-lg p-2 text-slate-700">
           </div>
           <div>
-            <label class="block font-bold text-slate-700 mb-1">📝 請假/代課事由：</label>
-            <input type="text" id="radarReasonInput" value="出席全縣國語文領域增能研習" class="w-full border border-slate-300 rounded-lg p-2 text-slate-700">
+            <label class="block font-bold text-slate-700 mb-1">🏷️ 請假種類 (第1欄)：</label>
+            <select id="radarLeaveCategorySelect" class="w-full border border-slate-300 rounded-lg p-2 font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+              <optgroup label="【第 8 節課後輔導專款 (5-4)】">
+                <option value="第八節">第八節 - 第8節課後輔導 ($450/節，納入5-4)</option>
+              </optgroup>
+              <optgroup label="【公費公假派代 (5-1)】">
+                <option value="公(研習)" selected>公(研習) - 研習/增能公差</option>
+                <option value="公(比賽)">公(比賽) - 帶隊指導競賽</option>
+                <option value="公(差)">公(差) - 公差公務外出</option>
+                <option value="公(喪)">公(喪) - 法定公假喪假</option>
+                <option value="公(婚)">公(婚) - 法定公假婚假</option>
+                <option value="公假">公假 (一般)</option>
+              </optgroup>
+              <optgroup label="【教育部專案款 (5-3)】">
+                <option value="身心調適假">身心調適假 (每學年限3天)</option>
+              </optgroup>
+              <optgroup label="【自費備查清冊 (5-4)】">
+                <option value="事假">事假 (自費代課/公費$0)</option>
+                <option value="病假">病假 (自費代課/公費$0)</option>
+              </optgroup>
+            </select>
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-          <label class="flex items-center gap-2 cursor-pointer font-bold text-amber-900 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
-            <input type="checkbox" id="radarIsFullDayTutor" checked onchange="onRadarDateOrTeacherChange()" class="text-amber-600 focus:ring-amber-500 rounded">
-            <span>兼任全日代理導師 (若請假者為導師，自動拆算當月代導費日額)</span>
-          </label>
-          <div id="radarTutorAllowanceHint" class="text-amber-700 font-medium"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-1">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">📝 請假事由詳述：</label>
+            <input type="text" id="radarReasonInput" value="出席全縣國語文領域增能研習" class="w-full border border-slate-300 rounded-lg p-2 text-slate-700">
+          </div>
+          <div class="flex flex-col justify-end">
+            <label class="flex items-center gap-2 cursor-pointer font-bold text-amber-900 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+              <input type="checkbox" id="radarIsFullDayTutor" checked onchange="onRadarDateOrTeacherChange()" class="text-amber-600 focus:ring-amber-500 rounded">
+              <span>兼任全日代理導師 (若請假者為導師，自動拆算當月代導費日額)</span>
+            </label>
+          </div>
         </div>
+
+        <div id="radarTutorAllowanceHint" class="text-xs text-amber-700 font-medium"></div>
 
         <!-- 今日已登記請假教師快捷切換標籤 -->
         <div id="radarAbsentTeachersBar" class="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
@@ -442,54 +468,79 @@
 
     <!-- ========== 模組 5：月結公文核銷中心 ========== -->
     <section id="tabReports" class="tab-content hidden space-y-4">
-      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
-        <div>
-          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <span>🖨️</span> 月結公文核銷中心 (會計科目分流與自費排除)
-          </h2>
-          <p class="text-xs text-slate-500">標準公文字號 • 區隔第8節課後輔導 • 自費($0)自動排除不虛增總額</p>
-        </div>
-        <div class="flex items-center gap-2">
-          <div class="bg-slate-100 p-1 rounded-lg flex text-xs">
-            <button onclick="setReportFilter('all')" id="rfAll" class="px-2.5 py-1 rounded font-bold bg-white text-blue-700 shadow-sm">全部清單</button>
-            <button onclick="setReportFilter('regular')" id="rfReg" class="px-2.5 py-1 rounded font-medium text-slate-600 hover:text-slate-900">僅正課公差 (1~7節)</button>
-            <button onclick="setReportFilter('afterSchool')" id="rfAfter" class="px-2.5 py-1 rounded font-medium text-slate-600 hover:text-slate-900">僅第8節課輔</button>
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+        <div class="flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span>🖨️</span> 模組 5：月結公文核銷與兼課結算中心
+            </h2>
+            <p class="text-xs text-slate-500">主計/出納會計科目分流 • 兼課超鐘點自動扣除公假外出與身心調適假 • 符合教育部法規</p>
           </div>
-          <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-1.5 rounded transition flex items-center gap-1 font-medium">
-            <span>🖨️</span> 列印公文冊
+          <button onclick="window.print()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2 rounded-lg transition flex items-center gap-1.5 font-bold shadow">
+            <span>🖨️</span> 列印本期公文清冊 (A4標準格式)
+          </button>
+        </div>
+
+        <!-- 四大子模組切換標籤 (5-1 至 5-4) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-1">
+          <button onclick="switchModule5SubTab('5-1')" id="subTabBtn_5_1" class="p-2.5 rounded-xl border-2 transition text-left flex flex-col justify-between bg-blue-50/80 border-blue-500 text-blue-950 shadow-sm">
+            <div class="flex items-center justify-between">
+              <span class="font-mono-code font-bold text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded">模組 5-1</span>
+              <span class="text-[10px] text-blue-700 font-bold">縣府公款</span>
+            </div>
+            <div class="font-black text-sm mt-1">原本公假代課核銷</div>
+            <div class="text-[11px] text-blue-700/80">公差/研習/比賽/代導費</div>
+          </button>
+
+          <button onclick="switchModule5SubTab('5-2')" id="subTabBtn_5_2" class="p-2.5 rounded-xl border-2 transition text-left flex flex-col justify-between bg-slate-50 border-slate-200 text-slate-700 hover:border-amber-400">
+            <div class="flex items-center justify-between">
+              <span class="font-mono-code font-bold text-xs bg-amber-600 text-white px-1.5 py-0.5 rounded">模組 5-2</span>
+              <span class="text-[10px] text-amber-700 font-bold">校兼課預算</span>
+            </div>
+            <div class="font-black text-sm mt-1">兼課超鐘點月結</div>
+            <div class="text-[11px] text-slate-500">自動扣除公假與調適假</div>
+          </button>
+
+          <button onclick="switchModule5SubTab('5-3')" id="subTabBtn_5_3" class="p-2.5 rounded-xl border-2 transition text-left flex flex-col justify-between bg-slate-50 border-slate-200 text-slate-700 hover:border-purple-400">
+            <div class="flex items-center justify-between">
+              <span class="font-mono-code font-bold text-xs bg-purple-600 text-white px-1.5 py-0.5 rounded">模組 5-3</span>
+              <span class="text-[10px] text-purple-700 font-bold">教育部專案款</span>
+            </div>
+            <div class="font-black text-sm mt-1">身心調適假專案</div>
+            <div class="text-[11px] text-slate-500">每人每年限 3 天額度控管</div>
+          </button>
+
+          <button onclick="switchModule5SubTab('5-4')" id="subTabBtn_5_4" class="p-2.5 rounded-xl border-2 transition text-left flex flex-col justify-between bg-slate-50 border-slate-200 text-slate-700 hover:border-amber-400">
+            <div class="flex items-center justify-between">
+              <span class="font-mono-code font-bold text-xs bg-amber-600 text-white px-1.5 py-0.5 rounded">模組 5-4</span>
+              <span class="text-[10px] text-amber-700 font-bold">課輔專款/自費</span>
+            </div>
+            <div class="font-black text-sm mt-1">第8節課輔與自費清冊</div>
+            <div class="text-[11px] text-slate-500">標示第八節 ($450) / 事病假</div>
           </button>
         </div>
       </div>
 
       <!-- 正式公文印製預覽卡片 -->
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-300 space-y-4 text-xs">
-        <div class="text-center space-y-1">
+      <div id="reportContainerCard" class="bg-white p-6 rounded-xl shadow-sm border border-slate-300 space-y-4 text-xs">
+        <!-- 動態報表頭部 -->
+        <div class="text-center space-y-1 border-b border-slate-200 pb-3">
           <h3 class="text-base font-extrabold text-slate-900 tracking-wider">雲林縣立飛沙國民中學</h3>
-          <h4 id="reportSubTitle" class="text-sm font-bold text-slate-800">115 學年度第 1 學期 公課排代鐘點費核銷總冊 (含公差派代與代導費)</h4>
+          <h4 id="reportSubTitle" class="text-sm font-bold text-slate-800">115 學年度第 1 學期 公課排代鐘點費核銷總冊 (縣府公款)</h4>
+          <p id="reportSourceDesc" class="text-[11px] text-slate-500">經費來源：雲林縣政府教育處公差假派代專款與代理導師補助費</p>
         </div>
 
-        <table class="w-full border-collapse border border-slate-800 text-[11px]">
-          <thead>
-            <tr class="bg-slate-100 text-slate-900 font-bold border-b border-slate-800 text-center">
-              <th class="border border-slate-800 p-1.5">代課人</th>
-              <th class="border border-slate-800 p-1.5">職稱</th>
-              <th class="border border-slate-800 p-1.5 text-left">核准文號</th>
-              <th class="border border-slate-800 p-1.5">代課日期</th>
-              <th class="border border-slate-800 p-1.5">節數</th>
-              <th class="border border-slate-800 p-1.5">單價</th>
-              <th class="border border-slate-800 p-1.5">代理導師費</th>
-              <th class="border border-slate-800 p-1.5 text-right">應領金額</th>
-              <th class="border border-slate-800 p-1.5">被代教師</th>
-              <th class="border border-slate-800 p-1.5 text-left">請假事由</th>
-              <th class="border border-slate-800 p-1.5 text-left">備註 (班級/堂)</th>
-            </tr>
-          </thead>
-          <tbody id="reportTableBody"></tbody>
-        </table>
+        <!-- 報表動態容器 -->
+        <div id="reportDynamicTableWrapper" class="overflow-x-auto">
+          <!-- 由 renderReportTable() 動態產生對應的表格結構 -->
+        </div>
 
         <!-- 大寫國字總計列 -->
-        <div class="text-right text-xs font-bold text-slate-800 pt-1">
-          核銷總金額：新臺幣 <span id="reportChineseTotal" class="text-rose-700 text-sm font-extrabold underline underline-offset-4">零元整</span>
+        <div id="reportSummaryBar" class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-300">
+          <div id="reportSummaryLeftNote" class="text-slate-600 font-medium"></div>
+          <div class="text-right text-xs font-bold text-slate-800">
+            核定印領總金額：新臺幣 <span id="reportChineseTotal" class="text-rose-700 text-sm font-extrabold underline underline-offset-4">零元整</span>
+          </div>
         </div>
 
         <!-- 六格核章欄位 (標準公文規格) -->
@@ -733,9 +784,10 @@
           <div>
             <label class="block font-bold text-slate-700 mb-1">課程性質與核銷單價：</label>
             <select id="calcCourseTypeSelect" onchange="handleCourseTypeChange()" class="w-full border border-slate-300 rounded p-1.5 font-bold text-blue-900">
-              <option value="regular" data-rate="455">標準公費排代 ($455 / 節)</option>
-              <option value="afterSchool" data-rate="450">第 8 節課後輔導 ($450 / 節)</option>
-              <option value="selfPaid" data-rate="0">自費 / 免請款代課 ($0)</option>
+              <option value="regular" data-rate="455">【5-1 公假】標準公費排代 ($455 / 節)</option>
+              <option value="mentalHealth" data-rate="455">【5-3 身心調適假】專案排代 ($455 / 節)</option>
+              <option value="selfPaid" data-rate="0">【5-4 事病假】自費免核排代 ($0)</option>
+              <option value="afterSchool" data-rate="450">第 8 節課後輔導專款 ($450 / 節)</option>
             </select>
           </div>
           <div>
@@ -926,6 +978,51 @@
     </div>
   </div>
 
+  <!-- Modal 8：LINE 代課通報速發彈窗 (個人帳號一鍵轉發) -->
+  <div id="modalLineShare" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border-2 border-[#06C755]">
+      <div class="bg-[#06C755] text-white p-4 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📲</span>
+          <div>
+            <h3 class="font-bold text-sm md:text-base text-slate-950">LINE 代課通報速發 (組長個人帳號)</h3>
+            <p class="text-[11px] text-emerald-950 font-medium">免架機器人 • 一鍵喚起 LINE 選擇課務群發送</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modalLineShare')" class="text-slate-900 hover:text-black font-bold text-lg">✕</button>
+      </div>
+
+      <div class="p-5 space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">📢 通報訊息內容預覽 (可直接微調編輯)：</label>
+          <textarea id="lineShareTextArea" rows="7" class="w-full border border-slate-300 rounded-xl p-3 font-mono-code text-xs text-slate-800 leading-relaxed focus:ring-2 focus:ring-[#06C755] focus:outline-none"></textarea>
+        </div>
+
+        <div class="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-[11px] text-emerald-950 space-y-1">
+          <div class="font-bold flex items-center gap-1">
+            <span>💡</span> 極速發送說明：
+          </div>
+          <div>1. 點擊下方綠色按鈕，系統將自動開啟電腦或手機上的 LINE。</div>
+          <div>2. 在對話分享清單中選取<strong>「飛沙國中課務群」</strong>或<strong>代課教師個人</strong>按「傳送」即可完成通報！</div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200">
+          <button onclick="copyLineShareContent()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-2 rounded-xl transition border border-slate-300 flex items-center gap-1.5 shadow-sm">
+            <span>📋</span> 複製文字
+          </button>
+          <div class="flex items-center gap-2">
+            <button onclick="closeModal('modalLineShare')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-xl transition font-medium">
+              關閉
+            </button>
+            <button onclick="triggerLineAppShare()" class="bg-[#06C755] hover:bg-[#05b04c] text-slate-950 font-black px-4 py-2 rounded-xl transition shadow flex items-center gap-1.5">
+              <span>📲</span> 立即開啟 LINE 發送
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 浮動通知 Toast -->
   <div id="toastNotification" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-slate-700 text-xs font-medium flex items-center gap-2 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none">
     <span id="toastIcon">✅</span>
@@ -952,91 +1049,91 @@
       { id: "T13", dept: "輔導室", title: "特教教師", name: "鄭宇涵", role: "teacher", subject: "特教資源班", overtimeWeekly: 0, isSubTutorQualified: false }
     ];
 
-    // 2. 全校 14 位教職員全週課表
+    // 2. 全校 14 位教職員全週課表 (補齊第 1~8 節課堂，包含全校第 8 節課後輔導)
     const MASTER_SCHEDULE_MAP = {
-      "蔡明振": {
-        1: { 1: "801 國文", 2: "901 國文" },
-        2: { 0: "801 導師時間", 2: "801 國文", 5: "701 國文", 7: "901 國文", 8: "801 課輔國文" },
-        3: { 1: "901 國文", 3: "801 國文" },
-        4: { 2: "801 國文", 3: "901 國文", 8: "801 課輔國文" },
-        5: { 1: "801 國文", 2: "901 國文", 7: "801 班會" }
-      },
-      "阮建安": {
-        1: { 3: "701 國文" },
-        2: { 2: "701 國文", 5: "902 國文", 6: "801 國文", 8: "701 課輔國文" },
-        3: { 1: "701 國文", 2: "902 國文" },
-        4: { 3: "701 國文", 5: "902 國文" },
-        5: { 4: "701 國文", 6: "701 閱讀", 7: "701 班會" }
-      },
-      "吳靜瑜": {
-        1: { 2: "701 英語", 3: "901 英語" },
-        2: { 3: "701 英語", 6: "902 英語", 7: "801 英語" },
-        3: { 1: "902 英語", 3: "901 英語", 6: "801 英語", 8: "901 課輔英語" },
-        4: { 1: "701 英語", 2: "902 英語" },
-        5: { 3: "901 英語", 5: "801 英語" }
-      },
-      "陳文鈴": {
-        1: { 5: "701 綜合" },
-        2: { 1: "801 家政", 6: "701 綜合" },
-        3: { 7: "901 綜合" },
-        4: { 7: "701 綜合" },
-        5: { 6: "801 綜合" }
-      },
-      "施銘權": {
-        1: { 4: "701 數學" },
-        2: { 1: "901 數學", 4: "701 數學" },
-        3: { 2: "701 數學" },
-        4: { 2: "701 數學" },
-        5: {}
-      },
       "蔡麗昭": {
-        1: { 2: "801 理化", 7: "701 自然" },
-        2: { 2: "901 理化", 7: "701 自然" },
-        3: { 2: "901 理化", 4: "801 理化" },
-        4: { 4: "801 理化" },
-        5: { 2: "701 自然", 4: "801 理化" }
-      },
-      "李貞慧": {
-        1: { 6: "701 社會" },
-        2: { 3: "801 社會", 5: "701 社會", 6: "901 社會" },
-        3: { 4: "701 社會" },
-        4: { 4: "902 社會", 7: "801 社會" },
-        5: { 1: "701 社會", 5: "901 社會" }
-      },
-      "蔡芷儀": {
         1: {},
-        2: { 3: "902 視覺藝術", 5: "801 視覺藝術" },
-        3: { 5: "701 視覺藝術", 6: "701 視覺藝術" },
-        4: { 5: "801 視覺藝術" },
-        5: { 6: "901 視覺藝術" }
+        2: { 6: "902 自然", 7: "901 自然" },
+        3: { 1: "901 自然", 3: "902 自然" },
+        4: { 3: "901 自然", 8: "901 課輔自然" },
+        5: { 4: "902 自然" }
       },
       "吳俊德": {
-        1: { 7: "801 生活科技" },
-        2: { 5: "901 生活科技" },
-        3: { 2: "801 生活科技", 7: "701 生活科技" },
-        4: { 3: "902 生活科技", 6: "701 生活科技" },
+        1: { 5: "801 生活科技" },
+        2: { 3: "701 生活科技" },
+        3: {},
+        4: { 6: "902 生活科技", 7: "901 生活科技" },
         5: {}
       },
+      "李貞慧": {
+        1: { 2: "901 社會", 7: "902 世界之眼" },
+        2: { 1: "901 社會", 4: "901 世界之眼", 5: "902 社會" },
+        3: { 7: "902 社會" },
+        4: { 3: "902 社會", 4: "901 社會" },
+        5: { 8: "901 課輔社會" }
+      },
+      "施銘權": {
+        1: { 4: "801 數學", 7: "701 健康", 8: "701 課輔數學" },
+        2: { 6: "701 數學", 7: "801 數學" },
+        3: { 4: "801 數學", 6: "701 數學", 8: "801 課輔數學" },
+        4: { 4: "701 數學", 6: "801 健康" },
+        5: { 1: "701 數學", 3: "801 數學", 8: "801 課輔數學" }
+      },
       "林秋霞": {
-        1: { 1: "701 體育", 4: "801 健體" },
-        2: { 1: "701 體育", 2: "902 體育" },
-        3: { 5: "801 體育", 7: "902 體育" },
-        4: { 4: "701 體育", 6: "801 體育" },
-        5: { 3: "701 健體", 5: "902 體育" }
+        1: { 2: "801 體育", 3: "901 體育", 6: "902 體育" },
+        2: { 2: "701 體育" },
+        3: { 2: "902 體育", 6: "901 體育" },
+        4: { 2: "701 體育", 3: "801 體育" },
+        5: {}
+      },
+      "阮建安": {
+        1: { 1: "701 國文", 5: "701 社會", 7: "901 國文", 8: "901 課輔國文" },
+        2: { 1: "701 社會", 3: "901 國文", 7: "701 國文" },
+        3: { 1: "701 社會", 2: "701 國文", 4: "901 國文", 8: "701 課輔國文" },
+        4: { 1: "901 國文", 3: "701 國文", 5: "901 書海飛閱" },
+        5: { 2: "701 國文", 3: "901 國文", 7: "701 飛中好品", 8: "701 課輔國文" }
+      },
+      "蔡明振": {
+        1: { 1: "902 國文", 3: "801 社會", 7: "801 國文" },
+        2: { 2: "801 國文", 4: "902 國文", 6: "801 社會", 8: "801 課輔國文" },
+        3: { 1: "902 國文", 3: "801 國文", 6: "801 社會", 8: "902 課輔國文" },
+        4: { 1: "801 國文", 2: "902 國文", 5: "902 書海飛閱", 8: "801 課輔國文" },
+        5: { 3: "902 國文", 4: "801 國文", 7: "801 飛中好品" }
       },
       "張碧菁": {
-        1: { 1: "901 數學", 3: "801 數學" },
-        2: { 3: "901 數學", 4: "901 導師時間" },
-        3: { 1: "801 數學", 6: "901 數學", 8: "901 課輔數學" },
-        4: { 1: "902 數學", 2: "901 數學" },
-        5: { 1: "901 數學", 2: "801 數學", 7: "901 班會" }
+        1: { 1: "901 數學", 3: "902 健康", 4: "902 數學", 8: "902 課輔數學" },
+        2: { 6: "901 數學", 8: "901 課輔數學" },
+        3: { 2: "901 健康", 5: "801 閩南語", 6: "902 數學", 7: "901 數學" },
+        4: { 4: "902 數學", 8: "902 課輔數學" },
+        5: { 1: "901 數學", 2: "902 數學", 4: "701 閩南語", 5: "901 飛中藝人", 6: "901 飛中藝人", 7: "901 飛中好品" }
       },
       "林𡶙鋌": {
-        1: { 1: "902 自然" },
-        2: { 4: "902 自然", 7: "902 自然" },
-        3: { 3: "902 自然" },
-        4: { 4: "901 理化", 6: "902 自然", 8: "902 課輔自然" },
-        5: { 4: "901 理化", 6: "902 自然", 7: "902 班會" }
+        1: { 4: "701 自然", 6: "801 自然" },
+        2: { 1: "902 資訊科技", 2: "901 資訊科技", 3: "801 資訊科技", 4: "701 資訊科技", 8: "902 課輔自然" },
+        3: { 1: "801 自然", 4: "701 飛海沙" },
+        4: { 5: "801 說古道今", 6: "701 自然", 8: "701 課輔自然" },
+        5: { 1: "801 自然", 3: "701 自然", 7: "902 飛中好品" }
+      },
+      "蔡芷儀": {
+        1: { 4: "901 藝術", 5: "902 藝術", 6: "701 藝術" },
+        2: { 5: "801 藝術", 7: "902 藝術" },
+        3: { 3: "701 藝術", 5: "901 藝術", 7: "801 藝術" },
+        4: { 1: "701 藝術", 2: "801 藝術", 6: "901 藝術", 7: "902 藝術" },
+        5: { 5: "902 飛中藝人", 6: "902 飛中藝人" }
+      },
+      "陳文鈴": {
+        1: { 2: "902 童軍", 3: "701 童軍", 5: "901 家政" },
+        2: { 1: "801 童軍", 3: "902 輔導", 5: "901 輔導" },
+        3: { 2: "801 輔導", 4: "902 家政", 5: "701 輔導" },
+        4: { 5: "701 家政", 7: "801 家政" },
+        5: { 2: "901 童軍", 5: "701 飛中藝人", 6: "701 飛中藝人" }
+      },
+      "吳靜瑜": {
+        1: { 1: "801 英語", 2: "701 英語", 6: "901 英語", 8: "801 課輔英語" },
+        2: { 2: "902 英語", 4: "801 英語", 5: "701 英語", 8: "701 課輔英語" },
+        3: { 3: "901 英語", 5: "902 神遊希臘神話", 7: "701 藝起繪英語", 8: "901 課輔英語" },
+        4: { 1: "902 英語", 2: "901 英語", 4: "801 英語", 7: "701 英語", 8: "902 課輔英語" },
+        5: { 1: "902 英語", 2: "801 大藝術家英語", 4: "901 神遊希臘神話", 5: "801 飛中藝人", 6: "801 飛中藝人" }
       },
       "鄭宇涵": {
         1: { 2: "學701 特教抽離" },
@@ -1065,16 +1162,16 @@
       { dayNum: 5, label: "週五", dateStr: "10/09", rocDate: "1151009" }
     ];
 
-    // 涵蓋早自修至第 8 節
+    // 飛沙國中作息鐘聲標準時間 (早自修至第 8 節)
     const PERIOD_TIMES = {
       0: "07:30 - 08:15",
-      1: "08:25 - 09:10",
-      2: "09:20 - 10:05",
-      3: "10:15 - 11:00",
-      4: "11:10 - 11:55",
-      5: "13:10 - 13:55",
-      6: "14:05 - 14:50",
-      7: "15:00 - 15:45",
+      1: "08:30 - 09:15",
+      2: "09:25 - 10:10",
+      3: "10:20 - 11:05",
+      4: "11:15 - 12:00",
+      5: "13:15 - 14:00",
+      6: "14:10 - 14:55",
+      7: "15:05 - 15:50",
       8: "16:00 - 16:45"
     };
 
@@ -1083,6 +1180,7 @@
       currentUser: "施銘權",
       currentRole: "admin",
       reportFilter: "all",
+      currentModule5SubTab: "5-1",
       radarViewMode: "matrix",
       radarDate: "2026-10-06",
       radarTeacher: "蔡明振",
@@ -1090,6 +1188,7 @@
       tasks: [
         {
           id: "TASK_1151006_801_1",
+          category: "公(研習)",
           subTeacher: "蔡明振",
           title: "801導師",
           docNo: "115年9月2日府教課二字第1152442203號",
@@ -1098,7 +1197,7 @@
           classPeriod: "801 第1節",
           classId: "801",
           period: 1,
-          subject: "家政", // 關鍵科目鎖定
+          subject: "童軍",
           courseType: "regular",
           periodsCount: 1,
           rate: 455,
@@ -1106,10 +1205,32 @@
           amount: 455,
           originalTeacher: "陳文鈴",
           reason: "國中綜合活動領域增能研習",
-          note: "—"
+          note: "公假派代"
+        },
+        {
+          id: "TASK_1151006_901_8",
+          category: "第八節",
+          subTeacher: "施銘權",
+          title: "教務組長",
+          docNo: "115學年度課後輔導實施計畫",
+          date: "1151006",
+          dayOfWeek: "週二",
+          classPeriod: "901 第8節",
+          classId: "901",
+          period: 8,
+          subject: "課輔數學",
+          courseType: "afterSchool",
+          periodsCount: 1,
+          rate: 450,
+          tutorFee: 0,
+          amount: 450,
+          originalTeacher: "張碧菁",
+          reason: "第8節課後輔導代課 (原任課公假研習)",
+          note: "第8節課輔專款"
         },
         {
           id: "TASK_1151002_902_7",
+          category: "公(比賽)",
           subTeacher: "陳文鈴",
           title: "體衛組長",
           docNo: "115年9月11日府教課二字第1152444635號",
@@ -1118,7 +1239,7 @@
           classPeriod: "902 第7節",
           classId: "902",
           period: 7,
-          subject: "班會",
+          subject: "飛中好品",
           courseType: "regular",
           periodsCount: 1,
           rate: 455,
@@ -1129,7 +1250,50 @@
           note: "兼全日代導 (31天拆算)"
         },
         {
+          id: "TASK_1151015_901_3",
+          category: "身心調適假",
+          subTeacher: "吳靜瑜",
+          title: "專任教師",
+          docNo: "教育部113年8月1日臺教授國字第1135503022號",
+          date: "1151015",
+          dayOfWeek: "週四",
+          classPeriod: "901 第3節",
+          classId: "901",
+          period: 3,
+          subject: "自然",
+          courseType: "mentalHealth",
+          periodsCount: 1,
+          rate: 455,
+          tutorFee: 0,
+          amount: 455,
+          originalTeacher: "蔡麗昭",
+          reason: "身心調適假 (專案免附證明)",
+          note: "每學年3天專案列管"
+        },
+        {
+          id: "TASK_1151020_901_7",
+          category: "事假",
+          subTeacher: "阮建安",
+          title: "701導師",
+          docNo: "校內同仁委任代課通知",
+          date: "1151020",
+          dayOfWeek: "週三",
+          classPeriod: "901 第7節",
+          classId: "901",
+          period: 7,
+          subject: "數學",
+          courseType: "selfPaid",
+          periodsCount: 1,
+          rate: 455,
+          tutorFee: 0,
+          amount: 0,
+          originalTeacher: "張碧菁",
+          reason: "個人事假 (私款自費代課)",
+          note: "出納薪資代扣代繳"
+        },
+        {
           id: "TASK_1151008_901_0",
+          category: "公(差)",
           subTeacher: "吳靜瑜",
           title: "專任教師",
           docNo: "115年9月11日府教體二字第1152444662號",
@@ -1161,6 +1325,32 @@
         }
       ]
     };
+
+    // ==========================================
+    // 3.3 全域排代任務新增/修改/刪除核心常式 (Upsert & Delete)
+    // ==========================================
+    function upsertTask(task) {
+      if (!task || !task.id) return;
+      const idx = appData.tasks.findIndex(t => t.id === task.id);
+      if (idx >= 0) {
+        appData.tasks[idx] = { ...appData.tasks[idx], ...task };
+      } else {
+        appData.tasks.push(task);
+      }
+      pushToCloud({ action: "upsertTask", task: task }, true);
+    }
+
+    function deleteTaskRecord(taskId) {
+      const idx = appData.tasks.findIndex(t => t.id === taskId);
+      if (idx >= 0) {
+        const removed = appData.tasks.splice(idx, 1)[0];
+        pushToCloud({ action: "deleteTask", taskId: taskId }, true);
+        showToast(`已銷假刪除代課紀錄 (${removed.classPeriod})`);
+        renderTasksTable();
+        renderReportTable();
+        renderScheduleGrid(appData.currentScheduleClass);
+      }
+    }
 
     // ==========================================
     // 3.5 雲端 Google 試算表雙向同步核心 (GAS Bridge)
@@ -1952,7 +2142,12 @@
                 <span class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">已排代課</span>
                 <div class="font-extrabold text-emerald-950 text-xs mt-0.5">${hasClass}</div>
                 <div class="text-[11px] text-emerald-800 font-black">👤 ${subTask.subTeacher}</div>
-                <button onclick="cancelRadarDispatch('${subTask.id}')" class="mt-1 text-[10px] text-rose-700 hover:underline">撤銷</button>
+                <div class="flex items-center justify-center gap-1 mt-1">
+                  <button onclick="openLineShareModal('${subTask.id}')" class="bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] px-1.5 py-0.5 rounded font-bold transition flex items-center gap-0.5 shadow-sm" title="一鍵 LINE 通報">
+                    <span>📲</span> LINE
+                  </button>
+                  <button onclick="cancelRadarDispatch('${subTask.id}')" class="text-[10px] text-rose-700 hover:underline">撤銷</button>
+                </div>
               </td>
             `;
           } else {
@@ -2002,7 +2197,12 @@
               <td class="bg-emerald-100/90 border border-emerald-400 p-1.5 text-center">
                 <span class="text-[9px] bg-emerald-700 text-white px-1 py-0.2 rounded font-bold">代課中</span>
                 <div class="font-bold text-emerald-950 text-[11px] mt-0.5">${existingSub.classPeriod} (${existingSub.subject || '代課'})</div>
-                <button onclick="cancelRadarDispatch('${existingSub.id}')" class="text-[10px] text-rose-600 hover:text-rose-800 underline font-bold mt-0.5">撤銷</button>
+                <div class="flex items-center justify-center gap-1 mt-1">
+                  <button onclick="openLineShareModal('${existingSub.id}')" class="bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] px-1.5 py-0.5 rounded font-bold transition flex items-center gap-0.5 shadow-sm" title="一鍵 LINE 通報">
+                    <span>📲</span> LINE
+                  </button>
+                  <button onclick="cancelRadarDispatch('${existingSub.id}')" class="text-[10px] text-rose-600 hover:text-rose-800 underline font-bold">撤銷</button>
+                </div>
               </td>
             `;
           } else if (course) {
@@ -2127,9 +2327,10 @@
     function executeDirectCellDispatch(subTeacher, period, courseText, origTeacher) {
       const parsed = parseRocDate(appData.radarDate);
       const rocDate = parsed.rocStr;
-      const docNo = document.getElementById("radarDocNoInput").value.trim() || "115年9月2日府教課二字第1152442203號";
-      const reason = document.getElementById("radarReasonInput").value.trim() || "公假派代";
+      const docNo = document.getElementById("radarDocNoInput").value.trim() || (period === 8 ? "115學年度課後輔導實施計畫" : "115年9月2日府教課二字第1152442203號");
+      const reason = document.getElementById("radarReasonInput").value.trim() || (period === 8 ? "第8節課後輔導代課" : "公假派代");
       const isFullDayTutorChecked = document.getElementById("radarIsFullDayTutor").checked;
+      let leaveCat = document.getElementById("radarLeaveCategorySelect").value || "公(研習)";
 
       let classId = "801";
       if (courseText.includes("701")) classId = "701";
@@ -2138,7 +2339,8 @@
       else if (courseText.includes("902")) classId = "902";
 
       let subject = "課堂授課";
-      if (courseText.includes("家政")) subject = "家政";
+      if (courseText.includes("課輔")) subject = courseText.replace(/^[0-9]+\s*/, "");
+      else if (courseText.includes("家政")) subject = "家政";
       else if (courseText.includes("國文")) subject = "國文";
       else if (courseText.includes("英語")) subject = "英語";
       else if (courseText.includes("數學")) subject = "數學";
@@ -2151,9 +2353,9 @@
 
       const subObj = OFFICIAL_TEACHERS.find(t => t.name === subTeacher) || {};
 
-      // 代導費計算：勾選即算，並加入同日上限檢查
+      // 代導費計算：第 8 節為課後輔導，無代理導師費 (日間專款)
       let tutorFee = 0;
-      if (isFullDayTutorChecked) {
+      if (isFullDayTutorChecked && period !== 8) {
         const capCheck = checkClassDailyTutorFeeExceeded(classId, rocDate);
         if (capCheck.exceeded) {
           showToast(`⚠️ 注意：${classId} 班於 ${rocDate} 當日已請領過代導費，依法單日單班不可重複請領，此筆代導費設為 $0`, "⚠️");
@@ -2164,14 +2366,38 @@
         }
       }
 
-      const rate = period === 8 ? 450 : 455;
+      let courseType = "regular";
+      let rate = 455;
+      let amount = 0;
+
+      // 第 8 節排代：一律納入模組 5-4，標示第八節，核銷單價 $450
+      if (period === 8 || leaveCat === "第八節") {
+        courseType = "afterSchool";
+        leaveCat = "第八節";
+        rate = 450;
+        tutorFee = 0;
+        amount = 450;
+      } else if (leaveCat === "身心調適假") {
+        courseType = "mentalHealth";
+        rate = 455;
+        amount = (1 * rate) + tutorFee;
+      } else if (leaveCat === "事假" || leaveCat === "病假") {
+        courseType = "selfPaid";
+        rate = 455;
+        amount = 0; // 自費公款歸零
+      } else {
+        courseType = "regular";
+        rate = 455;
+        amount = (1 * rate) + tutorFee;
+      }
+
       const periodsCount = 1;
-      const amount = (periodsCount * rate) + tutorFee;
 
       const existingTaskIdx = appData.tasks.findIndex(t => t.date === rocDate && t.originalTeacher === origTeacher && t.period === period);
 
       const newTask = {
         id: existingTaskIdx >= 0 ? appData.tasks[existingTaskIdx].id : `TASK_${rocDate}_${classId}_${period}_${Date.now().toString().slice(-4)}`,
+        category: leaveCat,
         subTeacher: subTeacher,
         title: subObj.title || "教師",
         docNo: docNo,
@@ -2181,14 +2407,14 @@
         classId: classId,
         period: period,
         subject: subject,
-        courseType: period === 8 ? "afterSchool" : "regular",
+        courseType: courseType,
         periodsCount: periodsCount,
         rate: rate,
         tutorFee: tutorFee,
         amount: amount,
         originalTeacher: origTeacher,
         reason: reason,
-        note: (tutorFee > 0 ? "兼代導" : "排代")
+        note: (period === 8 ? "第8節課後輔導 (納入5-4)" : (tutorFee > 0 ? "兼代導" : (leaveCat === "身心調適假" ? "身心調適假" : (courseType === "selfPaid" ? "自費代課" : "排代"))))
       };
 
       upsertTask(newTask);
@@ -2196,7 +2422,8 @@
       renderTasksTable();
       renderReportTable();
 
-      showToast(`✅ 排代成功！${subTeacher} 老師代授 ${classId} 第${period}節 ${subject} (應領: $${amount} 元)`);
+      showToast(`✅ 排代成功！[${leaveCat}] ${subTeacher} 老師代授 ${classId} 第${period}節 ${subject} (${period === 8 ? '課後輔導納入5-4' : '應領: $' + amount + '元'})`);
+      openLineShareModal(newTask.id);
     }
 
     function cancelRadarDispatch(taskId) {
@@ -2206,40 +2433,447 @@
     }
 
     // ==========================================
-    // 7. 清冊 (模組 2)、月結 (模組 5) 與工作流 (模組 3)
+    // 7.5 模組 5：月結四大子模組切換與渲染核心 (5-1 ~ 5-4)
     // ==========================================
-    function upsertTask(taskObj) {
-      const idx = appData.tasks.findIndex(t => t.id === taskObj.id);
-      if (idx >= 0) {
-        appData.tasks[idx] = { ...appData.tasks[idx], ...taskObj };
-      } else {
-        appData.tasks.unshift(taskObj);
-      }
-      renderScheduleGrid(appData.currentScheduleClass);
+    function switchModule5SubTab(subTabId) {
+      appData.currentModule5SubTab = subTabId;
+      const allTabs = ["5-1", "5-2", "5-3", "5-4"];
+      const styles = {
+        "5-1": { active: "bg-blue-50/90 border-blue-500 text-blue-950 shadow-sm", normal: "bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-400" },
+        "5-2": { active: "bg-amber-50/90 border-amber-500 text-amber-950 shadow-sm", normal: "bg-slate-50 border-slate-200 text-slate-700 hover:border-amber-400" },
+        "5-3": { active: "bg-purple-50/90 border-purple-500 text-purple-950 shadow-sm", normal: "bg-slate-50 border-slate-200 text-slate-700 hover:border-purple-400" },
+        "5-4": { active: "bg-rose-50/90 border-rose-500 text-rose-950 shadow-sm", normal: "bg-slate-50 border-slate-200 text-slate-700 hover:border-rose-400" }
+      };
 
-      // 自動增量推送到 Google 試算表
-      pushToCloud({
-        action: "upsertTask",
-        task: taskObj
-      }, true);
+      allTabs.forEach(id => {
+        const btn = document.getElementById(`subTabBtn_${id.replace("-", "_")}`);
+        if (!btn) return;
+        const config = styles[id];
+        if (id === subTabId) {
+          btn.className = `p-2.5 rounded-xl border-2 transition text-left flex flex-col justify-between ${config.active}`;
+        } else {
+          btn.className = `p-2.5 rounded-xl border-2 transition text-left flex flex-col justify-between ${config.normal}`;
+        }
+      });
+
+      renderReportTable();
     }
 
-    function deleteTaskRecord(taskId) {
-      const idx = appData.tasks.findIndex(t => t.id === taskId);
-      if (idx >= 0) {
-        const deleted = appData.tasks.splice(idx, 1)[0];
-        renderTasksTable();
-        renderReportTable();
-        renderRadarWorkspace();
-        renderScheduleGrid(appData.currentScheduleClass);
+    function renderReportTable() {
+      const wrapper = document.getElementById("reportDynamicTableWrapper");
+      const titleEl = document.getElementById("reportSubTitle");
+      const sourceDescEl = document.getElementById("reportSourceDesc");
+      const chineseTotalEl = document.getElementById("reportChineseTotal");
+      const leftNoteEl = document.getElementById("reportSummaryLeftNote");
+      if (!wrapper) return;
 
-        // 自動推播刪除到 Google 試算表
-        pushToCloud({
-          action: "deleteTask",
-          taskId: taskId
-        }, true);
+      const subTab = appData.currentModule5SubTab || "5-1";
 
-        showToast(`🗑️ 已銷假刪除代課紀錄 (${deleted.subTeacher} ${deleted.classPeriod})，課表已同步還原！`);
+      // ==============================================================
+      // 模組 5-1：原本公假代課核銷總冊 (排除第8節課後輔導與自費款)
+      // ==============================================================
+      if (subTab === "5-1") {
+        if (titleEl) titleEl.textContent = "115 學年度第 1 學期 公課排代鐘點費與代導費核銷總冊 (縣府公假專款 • 第1~7節)";
+        if (sourceDescEl) sourceDescEl.textContent = "經費來源：雲林縣政府教育處核定公假派代與全日代理導師費專款 (第8節課輔移至5-4，排除自費與身心調適專案)";
+
+        const filtered = appData.tasks.filter(t => 
+          t.period !== 8 && 
+          t.courseType !== "afterSchool" && 
+          !t.category.includes("第八節") &&
+          t.courseType !== "mentalHealth" && 
+          t.courseType !== "selfPaid" && 
+          t.amount > 0
+        );
+        let sumPeriods = 0, sumTutor = 0, sumAmount = 0;
+
+        let html = `
+          <table class="w-full border-collapse border border-slate-800 text-[11px]">
+            <thead>
+              <tr class="bg-blue-50 text-slate-900 font-bold border-b border-slate-800 text-center">
+                <th class="border border-slate-800 p-1.5 w-16">1.種類</th>
+                <th class="border border-slate-800 p-1.5 w-16">2.代課人姓名</th>
+                <th class="border border-slate-800 p-1.5 w-16">3.職稱</th>
+                <th class="border border-slate-800 p-1.5 text-left">4.核准文號</th>
+                <th class="border border-slate-800 p-1.5 w-20">5.代課日期</th>
+                <th class="border border-slate-800 p-1.5 w-14">6.代課節數</th>
+                <th class="border border-slate-800 p-1.5 w-16">7.每節鐘點費</th>
+                <th class="border border-slate-800 p-1.5 w-16">8.代理導師費</th>
+                <th class="border border-slate-800 p-1.5 text-right w-20">9.應領金額</th>
+                <th class="border border-slate-800 p-1.5 w-16">10.被代課教師</th>
+                <th class="border border-slate-800 p-1.5 text-left">11.代課事由</th>
+                <th class="border border-slate-800 p-1.5 text-left w-24">12.班級/堂</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-300 font-mono-code">
+        `;
+
+        if (filtered.length === 0) {
+          html += `<tr><td colspan="12" class="border border-slate-800 p-6 text-center text-slate-400">目前尚無公假排代請款紀錄</td></tr>`;
+        } else {
+          filtered.forEach(t => {
+            sumPeriods += (t.periodsCount || 0);
+            sumTutor += (t.tutorFee || 0);
+            sumAmount += (t.amount || 0);
+            const categoryText = t.category || "公(研習)";
+            html += `
+              <tr class="hover:bg-slate-50">
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-blue-900 font-sans">${categoryText}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-slate-900 font-sans">${t.subTeacher}</td>
+                <td class="border border-slate-800 p-1.5 text-center text-slate-600 font-sans">${t.title}</td>
+                <td class="border border-slate-800 p-1.5 text-left text-blue-900 text-[10px]">${t.docNo}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-slate-800">${t.date}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold">${t.periodsCount}</td>
+                <td class="border border-slate-800 p-1.5 text-center text-slate-600">$${t.rate}</td>
+                <td class="border border-slate-800 p-1.5 text-center ${t.tutorFee > 0 ? 'font-bold text-amber-800' : 'text-slate-400'}">$${t.tutorFee}</td>
+                <td class="border border-slate-800 p-1.5 text-right font-bold text-emerald-800">$${t.amount}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-slate-900 font-sans">${t.originalTeacher}</td>
+                <td class="border border-slate-800 p-1.5 text-left text-slate-700 font-sans">${t.reason}</td>
+                <td class="border border-slate-800 p-1.5 text-left font-bold text-slate-800 font-sans">${t.classPeriod}</td>
+              </tr>
+            `;
+          });
+        }
+
+        html += `
+            <tr class="bg-blue-50/60 font-bold border-t-2 border-slate-800">
+              <td colspan="5" class="border border-slate-800 p-2 text-right">小計 (${filtered.length} 筆)：</td>
+              <td class="border border-slate-800 p-2 text-center text-blue-900">${sumPeriods} 節</td>
+              <td class="border border-slate-800 p-2 text-center">—</td>
+              <td class="border border-slate-800 p-2 text-center text-amber-900">$${sumTutor.toLocaleString()}</td>
+              <td class="border border-slate-800 p-2 text-right text-rose-800 font-extrabold">$${sumAmount.toLocaleString()}</td>
+              <td colspan="3" class="border border-slate-800 p-2"></td>
+            </tr>
+          </tbody></table>
+        `;
+        wrapper.innerHTML = html;
+        if (chineseTotalEl) chineseTotalEl.textContent = numberToChineseAmount(sumAmount);
+        if (leftNoteEl) leftNoteEl.textContent = `共核結日間公假代課 ${filtered.length} 筆，代授正課 ${sumPeriods} 節，代理導師費 $${sumTutor} 元。`;
+        return;
+      }
+
+      // ==============================================================
+      // 模組 5-2：兼課超鐘點月結印領清冊 (自動扣除公假外出與身心調適假)
+      // ==============================================================
+      if (subTab === "5-2") {
+        if (titleEl) titleEl.textContent = "115 學年度第 1 學期 教師每週兼課超額鐘點費月結印領清冊 (校內兼課預算)";
+        if (sourceDescEl) sourceDescEl.textContent = "法規依據：雲林縣立高級中等以下學校教師每週基本授課節數標準 • 扣款防呆：公假外出或身心調適假未授課節數自動扣除";
+
+        const teachers = OFFICIAL_TEACHERS.filter(t => t.name !== "管理人");
+        let grandMonthlyOvertime = 0;
+        let grandDeductions = 0;
+        let grandActualPeriods = 0;
+        let grandAmount = 0;
+
+        let rowsHtml = "";
+        teachers.forEach(t => {
+          const weekly = t.overtimeWeekly || 0;
+          const monthlyStd = weekly * 4; // 以 4 週為月結基準
+          
+          // 檢索該師當月因公假外出或身心調適假由他人代課之節次
+          const absentTasks = appData.tasks.filter(k => 
+            k.originalTeacher === t.name && 
+            (k.category.includes("公") || k.category === "身心調適假" || k.courseType === "mentalHealth") && 
+            k.period > 0
+          );
+          
+          const deductCount = Math.min(absentTasks.length, monthlyStd);
+          const actualPeriods = Math.max(0, monthlyStd - deductCount);
+          const actualAmount = actualPeriods * 455;
+
+          grandMonthlyOvertime += monthlyStd;
+          grandDeductions += deductCount;
+          grandActualPeriods += actualPeriods;
+          grandAmount += actualAmount;
+
+          const deductNote = deductCount > 0 
+            ? `<span class="text-rose-700 font-bold">-${deductCount} 節</span><span class="text-[9px] block text-slate-500 font-sans">(${absentTasks.map(x => x.date.slice(3) + ' ' + (x.category.includes('身心') ? '調適假' : '公假')).join(', ')})</span>`
+            : `<span class="text-slate-400">0</span>`;
+
+          rowsHtml += `
+            <tr class="hover:bg-slate-50">
+              <td class="border border-slate-800 p-1.5 text-center font-bold text-slate-900 font-sans">${t.name}</td>
+              <td class="border border-slate-800 p-1.5 text-center text-slate-600 font-sans">${t.title}</td>
+              <td class="border border-slate-800 p-1.5 text-center font-sans">${t.subject}</td>
+              <td class="border border-slate-800 p-1.5 text-center font-bold text-slate-800 font-mono-code">${weekly} 節</td>
+              <td class="border border-slate-800 p-1.5 text-center font-bold font-mono-code text-blue-900">${monthlyStd} 節</td>
+              <td class="border border-slate-800 p-1.5 text-center font-mono-code bg-rose-50/50">${deductNote}</td>
+              <td class="border border-slate-800 p-1.5 text-center font-bold font-mono-code text-emerald-800 bg-emerald-50/30">${actualPeriods} 節</td>
+              <td class="border border-slate-800 p-1.5 text-center text-slate-600 font-mono-code">$455</td>
+              <td class="border border-slate-800 p-1.5 text-right font-extrabold font-mono-code text-slate-900">$${actualAmount.toLocaleString()}</td>
+              <td class="border border-slate-800 p-1.5 text-center text-slate-400 font-sans text-[10px]">${actualAmount > 0 ? '(印領核章)' : '—'}</td>
+            </tr>
+          `;
+        });
+
+        let html = `
+          <div class="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-950 flex items-center justify-between">
+            <div>
+              <span class="font-bold text-xs">💡 兼課超鐘點自動扣除勾稽說明：</span>
+              <span class="text-[11px] text-amber-800 ml-1">依人事差勤規定，同仁於排定兼課時段若因「公假」或「身心調適假」外出且已由他人代課，該節兼課超額不予支領，系統已自動比對並扣除。</span>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-bold text-xs font-mono-code shrink-0">基準月：4 週</span>
+          </div>
+          <table class="w-full border-collapse border border-slate-800 text-[11px]">
+            <thead>
+              <tr class="bg-amber-100/80 text-slate-900 font-bold border-b border-slate-800 text-center">
+                <th class="border border-slate-800 p-1.5 w-16">教師姓名</th>
+                <th class="border border-slate-800 p-1.5 w-20">現任職稱</th>
+                <th class="border border-slate-800 p-1.5 w-20">任教領域</th>
+                <th class="border border-slate-800 p-1.5 w-16">每週兼課</th>
+                <th class="border border-slate-800 p-1.5 w-20">應授節數(4週)</th>
+                <th class="border border-slate-800 p-1.5 w-24 text-rose-800">公假/調適扣除</th>
+                <th class="border border-slate-800 p-1.5 w-20 text-emerald-800">實計節數</th>
+                <th class="border border-slate-800 p-1.5 w-16">每節單價</th>
+                <th class="border border-slate-800 p-1.5 text-right w-24">實發兼課費</th>
+                <th class="border border-slate-800 p-1.5 w-20">印領簽章</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-300 font-mono-code">
+              ${rowsHtml}
+              <tr class="bg-amber-100/60 font-bold border-t-2 border-slate-800">
+                <td colspan="4" class="border border-slate-800 p-2 text-right">全校合計：</td>
+                <td class="border border-slate-800 p-2 text-center text-blue-900">${grandMonthlyOvertime} 節</td>
+                <td class="border border-slate-800 p-2 text-center text-rose-800">-${grandDeductions} 節</td>
+                <td class="border border-slate-800 p-2 text-center text-emerald-900 font-extrabold">${grandActualPeriods} 節</td>
+                <td class="border border-slate-800 p-2 text-center">$455</td>
+                <td class="border border-slate-800 p-2 text-right text-rose-900 font-black text-xs">$${grandAmount.toLocaleString()}</td>
+                <td class="border border-slate-800 p-2"></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+        wrapper.innerHTML = html;
+        if (chineseTotalEl) chineseTotalEl.textContent = numberToChineseAmount(grandAmount);
+        if (leftNoteEl) leftNoteEl.textContent = `全校 13 位教師兼課應授 ${grandMonthlyOvertime} 節，因公假/調適假扣除 ${grandDeductions} 節，實計授課 ${grandActualPeriods} 節。`;
+        return;
+      }
+
+      // ==============================================================
+      // 模組 5-3：身心調適假專案核銷總冊 (教育部專案款，3天上限管制)
+      // ==============================================================
+      if (subTab === "5-3") {
+        if (titleEl) titleEl.textContent = "115 學年度第 1 學期 教師身心調適假排代鐘點費專案核銷總冊 (教育部專案款)";
+        if (sourceDescEl) sourceDescEl.textContent = "法規依據：教育部113年8月1日臺教授國字第1135503022號函 • 每師每學年限 3 天(免附證明) • 專款全額補助排代鐘點費";
+
+        const filtered = appData.tasks.filter(t => 
+          t.courseType === "mentalHealth" || 
+          t.category === "身心調適假" || 
+          (t.reason && t.reason.includes("身心調適"))
+        );
+
+        // 統計全校各師已請身心調適假天數
+        const quotaMap = {};
+        OFFICIAL_TEACHERS.forEach(t => { if (t.name !== "管理人") quotaMap[t.name] = new Set(); });
+        filtered.forEach(t => {
+          if (quotaMap[t.originalTeacher]) quotaMap[t.originalTeacher].add(t.date);
+        });
+
+        let quotaBadgesHtml = Object.entries(quotaMap)
+          .filter(([name, dateSet]) => dateSet.size > 0)
+          .map(([name, dateSet]) => `
+            <div class="px-2.5 py-1 bg-purple-100 border border-purple-300 rounded-lg text-purple-950 font-bold flex items-center gap-1.5">
+              <span>👤 ${name}：</span>
+              <span class="text-purple-700">已請 ${dateSet.size} / 3 天</span>
+              <span class="text-[10px] bg-purple-600 text-white px-1.5 py-0.2 rounded font-normal">剩 ${3 - dateSet.size} 天</span>
+            </div>
+          `).join("");
+
+        if (!quotaBadgesHtml) {
+          quotaBadgesHtml = `<span class="text-slate-500 font-sans text-xs">目前全校同仁本學期尚無人申請身心調適假 (每位同仁上限額度均為 3 天)</span>`;
+        }
+
+        let sumPeriods = 0, sumAmount = 0;
+        let html = `
+          <div class="mb-3 p-3 bg-purple-50 border border-purple-300 rounded-lg space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs text-purple-950">📋 全校教師本學年身心調適假額度管制計量器 (每人限 3 天)：</span>
+              <span class="text-[10px] text-purple-700 font-mono-code font-bold">教育部專款補助</span>
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs">
+              ${quotaBadgesHtml}
+            </div>
+          </div>
+
+          <table class="w-full border-collapse border border-slate-800 text-[11px]">
+            <thead>
+              <tr class="bg-purple-100/80 text-slate-900 font-bold border-b border-slate-800 text-center">
+                <th class="border border-slate-800 p-1.5 w-16">1.種類</th>
+                <th class="border border-slate-800 p-1.5 w-16">2.代課人姓名</th>
+                <th class="border border-slate-800 p-1.5 w-16">3.職稱</th>
+                <th class="border border-slate-800 p-1.5 text-left">4.核准文號</th>
+                <th class="border border-slate-800 p-1.5 w-20">5.代課日期</th>
+                <th class="border border-slate-800 p-1.5 w-14">6.代課節數</th>
+                <th class="border border-slate-800 p-1.5 w-16">7.每節鐘點費</th>
+                <th class="border border-slate-800 p-1.5 w-16">8.代理導師費</th>
+                <th class="border border-slate-800 p-1.5 text-right w-20 text-purple-900">9.應領金額</th>
+                <th class="border border-slate-800 p-1.5 w-16">10.被代課教師</th>
+                <th class="border border-slate-800 p-1.5 text-left">11.代課事由</th>
+                <th class="border border-slate-800 p-1.5 text-left w-24">12.班級/堂</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-300 font-mono-code">
+        `;
+
+        if (filtered.length === 0) {
+          html += `<tr><td colspan="12" class="border border-slate-800 p-6 text-center text-slate-400">目前尚無身心調適假排代紀錄</td></tr>`;
+        } else {
+          filtered.forEach(t => {
+            sumPeriods += (t.periodsCount || 0);
+            sumAmount += (t.amount || 0);
+            html += `
+              <tr class="hover:bg-slate-50 bg-purple-50/20">
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-purple-900 font-sans">身心調適假</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-slate-900 font-sans">${t.subTeacher}</td>
+                <td class="border border-slate-800 p-1.5 text-center text-slate-600 font-sans">${t.title}</td>
+                <td class="border border-slate-800 p-1.5 text-left text-purple-900 text-[10px]">${t.docNo}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-slate-800">${t.date}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold">${t.periodsCount}</td>
+                <td class="border border-slate-800 p-1.5 text-center text-slate-600">$${t.rate}</td>
+                <td class="border border-slate-800 p-1.5 text-center text-slate-400">$0</td>
+                <td class="border border-slate-800 p-1.5 text-right font-extrabold text-purple-900">$${t.amount}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-purple-950 font-sans">${t.originalTeacher}</td>
+                <td class="border border-slate-800 p-1.5 text-left text-slate-700 font-sans">${t.reason}</td>
+                <td class="border border-slate-800 p-1.5 text-left font-bold text-slate-800 font-sans">${t.classPeriod}</td>
+              </tr>
+            `;
+          });
+        }
+
+        html += `
+            <tr class="bg-purple-100/60 font-bold border-t-2 border-slate-800">
+              <td colspan="5" class="border border-slate-800 p-2 text-right">小計 (${filtered.length} 筆)：</td>
+              <td class="border border-slate-800 p-2 text-center text-purple-900">${sumPeriods} 節</td>
+              <td class="border border-slate-800 p-2 text-center">—</td>
+              <td class="border border-slate-800 p-2 text-center text-slate-400">$0</td>
+              <td class="border border-slate-800 p-2 text-right text-purple-900 font-black text-xs">$${sumAmount.toLocaleString()}</td>
+              <td colspan="3" class="border border-slate-800 p-2"></td>
+            </tr>
+          </tbody></table>
+        `;
+        wrapper.innerHTML = html;
+        if (chineseTotalEl) chineseTotalEl.textContent = `${numberToChineseAmount(sumAmount)} (教育部專款)`;
+        if (leftNoteEl) leftNoteEl.textContent = `共核結身心調適假專案排代 ${filtered.length} 筆，代課 ${sumPeriods} 節，符合學年 3 天法定上限。`;
+        return;
+      }
+
+      // ==============================================================
+      // 模組 5-4：第 8 節課後輔導排代與事病假自費清冊 (納入第八節並明確標示)
+      // ==============================================================
+      if (subTab === "5-4") {
+        if (titleEl) titleEl.textContent = "115 學年度第 1 學期 第 8 節課後輔導排代與事病假自費明細清冊 (課輔專款/自費備查)";
+        if (sourceDescEl) sourceDescEl.textContent = "會計分流：第 8 節課後輔導鐘點費 ($450/節) 專款專發；事病假私事請假由請假教師自付代課費 (公款請領鎖定 $0)";
+
+        const filtered = appData.tasks.filter(t => 
+          t.period === 8 || 
+          t.courseType === "afterSchool" || 
+          (t.category && t.category.includes("第八節")) ||
+          t.courseType === "selfPaid" || 
+          t.amount === 0 || 
+          (t.reason && (t.reason.includes("事假") || t.reason.includes("病假")))
+        );
+
+        let sumPeriod8Count = 0;
+        let sumPeriod8Amount = 0;
+        let sumSelfPaidCount = 0;
+        let sumSelfPaidAmount = 0;
+
+        let html = `
+          <div class="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-950 flex flex-wrap items-center justify-between gap-2">
+            <div class="space-y-0.5">
+              <div class="font-bold text-xs flex items-center gap-1.5">
+                <span>📌</span> 模組 5-4 雙軌核銷規範說明 (含第 8 節課輔標示)：
+              </div>
+              <div class="text-[11px] text-amber-800">
+                1. <strong>第 8 節課後輔導</strong>：種類標註【第八節】，單價 $450 元，由課後輔導專款造冊發給代課教師。<br>
+                2. <strong>事假、病假自費</strong>：種類標註【事假/病假】，公款請領鎖定為 $0，由出納室自請假教師薪資代扣轉發。
+              </div>
+            </div>
+            <div class="text-right flex items-center gap-2">
+              <span class="px-2.5 py-1 bg-amber-200 border border-amber-400 rounded-lg font-bold font-mono-code text-amber-950 text-xs">
+                第 8 節課輔專款已納入
+              </span>
+            </div>
+          </div>
+
+          <table class="w-full border-collapse border border-slate-800 text-[11px]">
+            <thead>
+              <tr class="bg-amber-100/80 text-slate-900 font-bold border-b border-slate-800 text-center">
+                <th class="border border-slate-800 p-1.5 w-16">1.種類</th>
+                <th class="border border-slate-800 p-1.5 w-16">2.代課人姓名</th>
+                <th class="border border-slate-800 p-1.5 w-16">3.職稱</th>
+                <th class="border border-slate-800 p-1.5 text-left">4.核准文號</th>
+                <th class="border border-slate-800 p-1.5 w-20">5.代課日期</th>
+                <th class="border border-slate-800 p-1.5 w-14">6.代課節數</th>
+                <th class="border border-slate-800 p-1.5 w-16">7.每節鐘點費</th>
+                <th class="border border-slate-800 p-1.5 w-16">8.代理導師費</th>
+                <th class="border border-slate-800 p-1.5 text-right w-20 text-rose-800">9.應領金額</th>
+                <th class="border border-slate-800 p-1.5 w-16">10.被代課教師</th>
+                <th class="border border-slate-800 p-1.5 text-left">11.代課事由</th>
+                <th class="border border-slate-800 p-1.5 text-left w-24">12.班級/堂</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-300 font-mono-code">
+        `;
+
+        if (filtered.length === 0) {
+          html += `<tr><td colspan="12" class="border border-slate-800 p-6 text-center text-slate-400">目前尚無第 8 節課輔或事病假自費登記紀錄</td></tr>`;
+        } else {
+          filtered.forEach(t => {
+            const isP8 = (t.period === 8 || t.courseType === "afterSchool" || (t.category && t.category.includes("第八節")));
+            
+            if (isP8) {
+              sumPeriod8Count += (t.periodsCount || 1);
+              sumPeriod8Amount += (t.amount || 450);
+            } else {
+              sumSelfPaidCount += (t.periodsCount || 1);
+              sumSelfPaidAmount += ((t.periodsCount || 1) * (t.rate || 455));
+            }
+
+            const categoryBadge = isP8 
+              ? `<span class="px-2 py-0.5 rounded font-black bg-amber-500 text-slate-950 font-sans border border-amber-600 shadow-sm">第八節</span>`
+              : `<span class="px-1.5 py-0.5 rounded font-bold bg-rose-200 text-rose-900 font-sans">${t.category || (t.reason.includes("病假") ? "病假" : "事假")}</span>`;
+
+            const amountText = isP8
+              ? `<span class="font-extrabold text-amber-900">$${t.amount || 450}</span><span class="text-[9px] font-sans block text-amber-700">(課輔款)</span>`
+              : `<span class="text-slate-400 line-through">$0</span><span class="text-[9px] font-sans block text-rose-700">(自費免核)</span>`;
+
+            html += `
+              <tr class="hover:bg-slate-50 ${isP8 ? 'bg-amber-50/30' : ''}">
+                <td class="border border-slate-800 p-1.5 text-center">${categoryBadge}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-slate-900 font-sans">${t.subTeacher}</td>
+                <td class="border border-slate-800 p-1.5 text-center text-slate-600 font-sans">${t.title}</td>
+                <td class="border border-slate-800 p-1.5 text-left text-slate-700 text-[10px]">${t.docNo}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-slate-800">${t.date}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold">${t.periodsCount}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold ${isP8 ? 'text-amber-800' : 'text-slate-600'}">$${t.rate}</td>
+                <td class="border border-slate-800 p-1.5 text-center text-slate-400">$0</td>
+                <td class="border border-slate-800 p-1.5 text-right">${amountText}</td>
+                <td class="border border-slate-800 p-1.5 text-center font-bold text-slate-900 font-sans">${t.originalTeacher}</td>
+                <td class="border border-slate-800 p-1.5 text-left text-slate-700 font-sans">${t.reason}</td>
+                <td class="border border-slate-800 p-1.5 text-left font-bold ${isP8 ? 'text-amber-950 font-black' : 'text-slate-800'} font-sans">
+                  ${t.classPeriod} ${isP8 ? '<span class="text-[9px] bg-amber-200 text-amber-900 px-1 rounded ml-1">第8節</span>' : ''}
+                </td>
+              </tr>
+            `;
+          });
+        }
+
+        html += `
+            <tr class="bg-amber-100/60 font-bold border-t-2 border-slate-800">
+              <td colspan="5" class="border border-slate-800 p-2 text-right">第 8 節課輔專款應發 (${sumPeriod8Count} 節)：</td>
+              <td class="border border-slate-800 p-2 text-center text-amber-950">${sumPeriod8Count} 節</td>
+              <td class="border border-slate-800 p-2 text-center">$450</td>
+              <td class="border border-slate-800 p-2 text-center text-slate-400">$0</td>
+              <td class="border border-slate-800 p-2 text-right text-amber-950 font-extrabold">$${sumPeriod8Amount.toLocaleString()}</td>
+              <td colspan="2" class="border border-slate-800 p-2 text-right text-slate-700">出納室事病假薪資代扣總額：</td>
+              <td class="border border-slate-800 p-2 text-right text-rose-800 font-extrabold">$${sumSelfPaidAmount.toLocaleString()}</td>
+            </tr>
+          </tbody></table>
+        `;
+        wrapper.innerHTML = html;
+        if (chineseTotalEl) chineseTotalEl.textContent = `${numberToChineseAmount(sumPeriod8Amount)} (課後輔導專款)`;
+        if (leftNoteEl) leftNoteEl.textContent = `共核結第 8 節課後輔導 ${sumPeriod8Count} 節 (課輔專款應發 $${sumPeriod8Amount.toLocaleString()} 元)；事病假自費代課 ${sumSelfPaidCount} 節 (出納薪資代扣備查 $${sumSelfPaidAmount.toLocaleString()} 元)。`;
+        return;
       }
     }
 
@@ -2258,8 +2892,8 @@
         if (adminBtns) adminBtns.classList.add("hidden");
         if (teacherBadge) teacherBadge.classList.remove("hidden");
       } else {
-        if (titleEl) titleEl.innerHTML = `<span>📑</span> 標準 13 欄公課排代與代導總冊 (全校總覽)`;
-        if (subTitleEl) subTitleEl.textContent = `每列最多 1 堂 (0或1節) • 民國 7 碼純數字 (1151006) • 權威姓名唯一鍵：林𡶙鋌 • 銷假即時同步還原課表`;
+        if (titleEl) titleEl.innerHTML = `<span>📑</span> 標準 12 欄公課排代與代導總冊 (全校總覽)`;
+        if (subTitleEl) subTitleEl.textContent = `每列最多 1 堂 (0或1節) • 民國 7 碼純數字 (1151006) • 種類細分 公(婚)、公(喪)、公(研習) • 班級/堂移至第12欄末位標註`;
         if (adminBtns) adminBtns.classList.remove("hidden");
         if (teacherBadge) teacherBadge.classList.add("hidden");
       }
@@ -2275,7 +2909,7 @@
       if (displayTasks.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="14" class="p-8 text-center text-slate-400">
+            <td colspan="13" class="p-8 text-center text-slate-400">
               ${appData.currentRole === 'teacher' ? `目前無任何與【${appData.currentUser} 老師】相關之公課排代或代導紀錄。` : '目前總冊尚無任何排代紀錄。'}
             </td>
           </tr>
@@ -2287,14 +2921,14 @@
         const tr = document.createElement("tr");
         tr.className = "hover:bg-slate-50 transition";
         const isSelfPaid = (t.amount === 0 || t.courseType === "selfPaid");
+        const categoryText = t.category || (t.courseType === "mentalHealth" ? "身心調適假" : (isSelfPaid ? "事假" : "公(研習)"));
 
         tr.innerHTML = `
+          <td class="p-2.5 font-bold font-sans ${categoryText.includes('公') ? 'text-blue-900 bg-blue-50/50' : (categoryText.includes('身心') ? 'text-purple-900 bg-purple-50/50' : 'text-rose-900 bg-rose-50/50')}">${categoryText}</td>
           <td class="p-2.5 font-bold text-slate-900 font-sans">${t.subTeacher}</td>
           <td class="p-2.5 text-slate-500 font-sans">${t.title}</td>
           <td class="p-2.5 text-blue-700 text-[10px] font-mono-code">${t.docNo}</td>
           <td class="p-2.5 font-bold text-slate-800">${t.date}</td>
-          <td class="p-2.5 font-sans">${t.dayOfWeek}</td>
-          <td class="p-2.5 font-bold text-blue-900 font-sans">${t.classPeriod}</td>
           <td class="p-2.5 text-center font-bold text-slate-800">${t.periodsCount}</td>
           <td class="p-2.5 text-right">$${t.rate}</td>
           <td class="p-2.5 text-right ${t.tutorFee > 0 ? 'font-bold text-amber-700' : 'text-slate-400'}">$${t.tutorFee}</td>
@@ -2303,12 +2937,17 @@
           </td>
           <td class="p-2.5 font-sans font-bold text-slate-900">${t.originalTeacher}</td>
           <td class="p-2.5 font-sans text-slate-600">${t.reason}</td>
-          <td class="p-2.5 font-sans ${t.tutorFee > 0 ? 'text-amber-800 font-bold' : 'text-slate-400'}">${t.note}</td>
+          <td class="p-2.5 font-bold text-slate-800 font-sans">${t.classPeriod}</td>
           <td class="p-2.5 text-center">
             ${appData.currentRole === 'admin' ? `
-              <button onclick="deleteTaskRecord('${t.id}')" class="text-rose-600 hover:text-rose-800 font-bold font-sans text-[11px] px-1.5 py-0.5 rounded hover:bg-rose-50 transition" title="銷假刪除並復原課表">
-                銷假刪除
-              </button>
+              <div class="flex items-center justify-center gap-1">
+                <button onclick="openLineShareModal('${t.id}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold font-sans text-[11px] px-1.5 py-0.5 rounded transition flex items-center gap-0.5 shadow-sm" title="一鍵 LINE 通報">
+                  <span>📲</span> LINE
+                </button>
+                <button onclick="deleteTaskRecord('${t.id}')" class="text-rose-600 hover:text-rose-800 font-bold font-sans text-[11px] px-1.5 py-0.5 rounded hover:bg-rose-50 transition" title="銷假刪除並復原課表">
+                  銷假
+                </button>
+              </div>
             ` : `<span class="text-slate-400 text-[10px]">—</span>`}
           </td>
         `;
@@ -2316,82 +2955,78 @@
       });
     }
 
-    function setReportFilter(filterType) {
-      appData.reportFilter = filterType;
-      const bAll = document.getElementById("rfAll");
-      const bReg = document.getElementById("rfReg");
-      const bAfter = document.getElementById("rfAfter");
+    // ==========================================
+    // 7.8 LINE 代課通報速發引擎 (個人帳號 URL Scheme)
+    // ==========================================
+    function generateLineTaskMessage(task) {
+      const parsed = parseRocDate(task.date);
+      const periodTime = PERIOD_TIMES[task.period] ? ` (${PERIOD_TIMES[task.period]})` : "";
+      const periodText = task.period === 0 ? "全日代理導師 (無正課)" : `${task.classPeriod}${periodTime}`;
 
-      [bAll, bReg, bAfter].forEach(b => {
-        if (b) b.className = "px-2.5 py-1 rounded font-medium text-slate-600 hover:text-slate-900";
-      });
-
-      if (filterType === "all" && bAll) bAll.className = "px-2.5 py-1 rounded font-bold bg-white text-blue-700 shadow-sm";
-      else if (filterType === "regular" && bReg) bReg.className = "px-2.5 py-1 rounded font-bold bg-white text-blue-700 shadow-sm";
-      else if (filterType === "afterSchool" && bAfter) bAfter.className = "px-2.5 py-1 rounded font-bold bg-white text-blue-700 shadow-sm";
-
-      renderReportTable();
-    }
-
-    function renderReportTable() {
-      const tbody = document.getElementById("reportTableBody");
-      const totalChineseEl = document.getElementById("reportChineseTotal");
-      const subTitleEl = document.getElementById("reportSubTitle");
-      if (!tbody) return;
-      tbody.innerHTML = "";
-
-      let filtered = appData.tasks.filter(t => t.amount > 0);
-
-      if (appData.reportFilter === "regular") {
-        filtered = filtered.filter(t => t.courseType !== "afterSchool" && t.period !== 8);
-        if (subTitleEl) subTitleEl.textContent = "115 學年度第 1 學期 正課公差排代鐘點費核銷總冊 (1~7節專用)";
-      } else if (appData.reportFilter === "afterSchool") {
-        filtered = filtered.filter(t => t.courseType === "afterSchool" || t.period === 8);
-        if (subTitleEl) subTitleEl.textContent = "115 學年度第 1 學期 第 8 節課後輔導鐘點費核銷總冊 (課輔專戶)";
-      } else {
-        if (subTitleEl) subTitleEl.textContent = "115 學年度第 1 學期 公課排代與代導費核銷總冊 (全科目彙總)";
+      let tutorNote = "";
+      if (task.tutorFee > 0 || task.period === 0) {
+        tutorNote = `📌 導師任務：兼任 ${task.classId} 全日代理導師，請協助早自修常規、聯絡簿查閱與晨讀常態督導。\n`;
       }
 
-      let sumPeriods = 0;
-      let sumTutor = 0;
-      let sumAmount = 0;
+      let leaveCatNote = "";
+      if (task.courseType === "mentalHealth") {
+        leaveCatNote = "🏷️ 假別性質：身心調適假專案\n";
+      } else if (task.courseType === "selfPaid") {
+        leaveCatNote = "🏷️ 假別性質：事病假自費代課\n";
+      }
 
-      filtered.forEach(t => {
-        sumPeriods += (t.periodsCount || 0);
-        sumTutor += (t.tutorFee || 0);
-        sumAmount += (t.amount || 0);
+      return `🔔【飛沙國中 代課通知】\n` +
+             `📅 代課日期：${task.date} (${task.dayOfWeek || parsed.dayOfWeek})\n` +
+             `👨‍🏫 代課同仁：@${task.subTeacher} 老師\n` +
+             `🏫 授課班節：${periodText}\n` +
+             `📖 授課科目：${task.subject || '課堂授課'} (原任課：${task.originalTeacher} 老師)\n` +
+             `📝 請假事由：${task.reason || '公假派代'}\n` +
+             leaveCatNote +
+             tutorNote +
+             `教務處 施銘權 敬上`;
+    }
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="border border-slate-800 p-1.5 text-center font-bold">${t.subTeacher}</td>
-          <td class="border border-slate-800 p-1.5 text-center">${t.title}</td>
-          <td class="border border-slate-800 p-1.5">${t.docNo}</td>
-          <td class="border border-slate-800 p-1.5 text-center font-mono-code">${t.date}</td>
-          <td class="border border-slate-800 p-1.5 text-center">${t.periodsCount}</td>
-          <td class="border border-slate-800 p-1.5 text-center">$${t.rate}</td>
-          <td class="border border-slate-800 p-1.5 text-center ${t.tutorFee > 0 ? 'font-bold' : ''}">$${t.tutorFee}</td>
-          <td class="border border-slate-800 p-1.5 text-right font-bold">$${t.amount}</td>
-          <td class="border border-slate-800 p-1.5 text-center font-bold">${t.originalTeacher}</td>
-          <td class="border border-slate-800 p-1.5">${t.reason}</td>
-          <td class="border border-slate-800 p-1.5">${t.classPeriod}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+    function openLineShareModal(taskId) {
+      const task = appData.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const msg = generateLineTaskMessage(task);
+      const textarea = document.getElementById("lineShareTextArea");
+      if (textarea) textarea.value = msg;
+      openModal("modalLineShare");
+    }
 
-      const trSum = document.createElement("tr");
-      trSum.className = "bg-slate-50 font-bold";
-      trSum.innerHTML = `
-        <td colspan="4" class="border border-slate-800 p-2 text-right">合計 (${filtered.length} 筆)：</td>
-        <td class="border border-slate-800 p-2 text-center text-blue-800">${sumPeriods} 節</td>
-        <td class="border border-slate-800 p-2 text-center">—</td>
-        <td class="border border-slate-800 p-2 text-center text-amber-800">$${sumTutor.toLocaleString()}</td>
-        <td class="border border-slate-800 p-2 text-right text-rose-800 font-extrabold">$${sumAmount.toLocaleString()}</td>
-        <td colspan="3" class="border border-slate-800 p-2"></td>
-      `;
-      tbody.appendChild(trSum);
+    function triggerLineAppShare() {
+      const textarea = document.getElementById("lineShareTextArea");
+      const msg = textarea ? textarea.value.trim() : "";
+      if (!msg) return;
+      const lineShareUrl = "https://line.me/R/share?text=" + encodeURIComponent(msg);
+      window.open(lineShareUrl, "_blank");
+      closeModal("modalLineShare");
+      showToast("已喚起 LINE 分享視窗，請選取課務群發送！", "📲");
+    }
 
-      if (totalChineseEl) {
-        totalChineseEl.textContent = numberToChineseAmount(sumAmount);
+    function copyLineShareContent() {
+      const textarea = document.getElementById("lineShareTextArea");
+      const text = textarea ? textarea.value : "";
+      if (!text) return;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast("✅ 已複製代課通報文字到剪貼簿！");
+        }).catch(() => {
+          fallbackCopyText();
+        });
+      } else {
+        fallbackCopyText();
+      }
+    }
+
+    function fallbackCopyText() {
+      const textarea = document.getElementById("lineShareTextArea");
+      if (textarea) {
+        textarea.select();
+        document.execCommand("copy");
+        showToast("✅ 已複製代課通報文字到剪貼簿！");
       }
     }
 
@@ -2769,10 +3404,12 @@
     function handleCourseTypeChange() {
       const type = document.getElementById("calcCourseTypeSelect").value;
       const rateInput = document.getElementById("calcCustomRateInput");
+      const periodSelect = document.getElementById("calcPeriodSelect");
       if (type === "regular") {
         rateInput.value = 455;
       } else if (type === "afterSchool") {
         rateInput.value = 450;
+        if (periodSelect) periodSelect.value = "8";
       } else if (type === "selfPaid") {
         rateInput.value = 0;
       }
@@ -2782,18 +3419,30 @@
     function recalculateTutorFee() {
       const dateVal = document.getElementById("calcSubDate").value;
       const isTutor = document.getElementById("calcIsTutorBox").checked;
-      const rate = parseInt(document.getElementById("calcCustomRateInput").value, 10) || 0;
       const period = parseInt(document.getElementById("calcPeriodSelect").value, 10);
+      const rateInput = document.getElementById("calcCustomRateInput");
 
+      // 若選取第 8 節，自動鎖定 $450 且無代理導師費
+      if (period === 8) {
+        if (rateInput) rateInput.value = 450;
+        const typeSelect = document.getElementById("calcCourseTypeSelect");
+        if (typeSelect) typeSelect.value = "afterSchool";
+      }
+
+      const rate = parseInt(rateInput.value, 10) || 0;
       const parsed = parseRocDate(dateVal);
       const calc = calculateDailyTutorFee(parsed.rocStr);
-      const tutorFee = isTutor ? calc.total : 0;
+      const tutorFee = (isTutor && period !== 8) ? calc.total : 0;
       const periodsCount = period === 0 ? 0 : 1;
       const total = (periodsCount * rate) + tutorFee;
 
       const hintEl = document.getElementById("calcFormulaHint");
       if (hintEl) {
-        hintEl.innerHTML = `💡 <strong>${calc.year}年${calc.month}月</strong> (共 ${calc.daysInMonth} 天)：減授差額 $${calc.base} + 導師日額 $${calc.allowance} = <strong>$${calc.total} 元整</strong>`;
+        if (period === 8) {
+          hintEl.innerHTML = `💡 <strong>第 8 節課後輔導</strong>：單價固定為 <strong>$450 元</strong>，納入模組 5-4 課輔專款核銷，無代理導師費。`;
+        } else {
+          hintEl.innerHTML = `💡 <strong>${calc.year}年${calc.month}月</strong> (共 ${calc.daysInMonth} 天)：減授差額 $${calc.base} + 導師日額 $${calc.allowance} = <strong>$${calc.total} 元整</strong>`;
+        }
       }
 
       document.getElementById("calcTotalAmountText").textContent = `$${total} 元`;
@@ -2885,46 +3534,20 @@
     }
 
     function download13ColTemplate() {
-      const csv = "\uFEFF代課人姓名,職稱,核准文號,代課日期,星期,班級/堂,代課節數,每節鐘點費,代理導師費,應領金額,被代課教師,請假/代課事由,獨立備註\n蔡明振,801導師,115年9月2日府教課二字第1152442203號,1151006,週二,801 第1節,1,455,0,455,陳文鈴,國中綜合活動領域增能研習,—\n";
+      // 產出標準 12 欄 CSV 格式範本
+      const csv = "\uFEFF種類,代課人姓名,職稱,核准文號,代課日期,代課節數,每節鐘點費,代理導師費,應領金額,被代課教師,代課事由,班級/堂\n" +
+                  "公(研習),蔡明振,801導師,115年9月2日府教課二字第1152442203號,1151006,1,455,0,455,陳文鈴,國中綜合活動領域增能研習,801 第1節\n" +
+                  "公(比賽),陳文鈴,體衛組長,115年9月11日府教課二字第1152444635號,1151002,1,455,493,948,林𡶙鋌,中小學科展指導研習,902 第7節\n" +
+                  "公(喪),吳靜瑜,專任教師,115年10月1日校內核定,1151012,1,455,0,455,阮建安,同仁喪假公差代課,701 第2節\n" +
+                  "身心調適假,吳靜瑜,專任教師,教育部113年8月1日臺教授國字第1135503022號,1151015,1,455,0,455,蔡麗昭,身心調適假(專案免附證明),801 第4節\n";
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "飛沙國中_標準13欄清冊範本.csv";
+      a.download = "飛沙國中_標準12欄清冊範本.csv";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      showToast("已下載標準 13 欄清冊空白範本");
-    }
-
-    function simulateLegacyCsvUpload() {
-      openModal("modalCsvDiagnostic");
-    }
-
-    function triggerConflictWizardDemo() {
-      const container = document.getElementById("conflictCardsContainer");
-      if (container) {
-        container.innerHTML = `
-          <div class="border border-amber-300 rounded-xl p-3 bg-amber-50/50 space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-slate-800 text-xs">課堂標的：1151006 (週二) 第1節 801 家政課</span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900">代課教師與公文號有異動</span>
-            </div>
-            <div class="grid grid-cols-2 gap-2 text-[11px]">
-              <div class="p-2 rounded bg-slate-100 border border-slate-300">
-                <span class="font-bold text-slate-600 block">【現有系統紀錄】</span>
-                <div>代課：陳文鈴 老師</div>
-                <div class="text-slate-500">文號：待補齊</div>
-              </div>
-              <div class="p-2 rounded bg-amber-100 border border-amber-300">
-                <span class="font-bold text-amber-900 block">【新 CSV 匯入內容】</span>
-                <div>代課：蔡明振 老師</div>
-                <div class="text-amber-800">文號：115年9月2日府教課二字第1152442203號</div>
-              </div>
-            </div>
-          </div>
-        `;
-      }
-      openModal("modalConflictWizard");
+      showToast("已下載標準 12 欄清冊空白範本");
     }
 
     function handleRealCsvUpload(e) {
@@ -2942,7 +3565,8 @@
         const cleanLine = (l) => l.replace(/^\uFEFF/, "").trim();
         const headerCols = cleanLine(lines[0]).split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
         
-        if (headerCols.length !== 13) {
+        // 接受標準 12 欄（或兼容量舊 13 欄）
+        if (headerCols.length !== 12 && headerCols.length !== 13) {
           openModal("modalCsvDiagnostic");
           return;
         }
@@ -2953,21 +3577,50 @@
           const rawRow = cleanLine(lines[i]);
           if (!rawRow) continue;
           const cols = rawRow.split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
-          if (cols.length < 13) continue;
+          if (cols.length < 12) continue;
 
-          const subTeacher = cols[0];
-          const title = cols[1];
-          const docNo = cols[2];
-          const date = cols[3];
-          const dayOfWeek = cols[4];
-          const classPeriod = cols[5];
-          const periodsCount = parseInt(cols[6], 10) || 0;
-          const rate = parseInt(cols[7], 10) || 455;
-          const tutorFee = parseInt(cols[8], 10) || 0;
-          const amount = parseInt(cols[9], 10) || ((periodsCount * rate) + tutorFee);
-          const originalTeacher = cols[10];
-          const reason = cols[11];
-          const note = cols[12];
+          let category = "公(研習)";
+          let subTeacher = "";
+          let title = "教師";
+          let docNo = "";
+          let date = "";
+          let periodsCount = 1;
+          let rate = 455;
+          let tutorFee = 0;
+          let amount = 455;
+          let originalTeacher = "";
+          let reason = "";
+          let classPeriod = "";
+
+          if (headerCols.length === 12) {
+            // 新標準 12 欄解析
+            category = cols[0] || "公假";
+            subTeacher = cols[1];
+            title = cols[2];
+            docNo = cols[3];
+            date = cols[4];
+            periodsCount = parseInt(cols[5], 10) || 0;
+            rate = parseInt(cols[6], 10) || 455;
+            tutorFee = parseInt(cols[7], 10) || 0;
+            amount = parseInt(cols[8], 10) || ((periodsCount * rate) + tutorFee);
+            originalTeacher = cols[9];
+            reason = cols[10];
+            classPeriod = cols[11];
+          } else {
+            // 兼容舊 13 欄解析
+            subTeacher = cols[0];
+            title = cols[1];
+            docNo = cols[2];
+            date = cols[3];
+            classPeriod = cols[5];
+            periodsCount = parseInt(cols[6], 10) || 0;
+            rate = parseInt(cols[7], 10) || 455;
+            tutorFee = parseInt(cols[8], 10) || 0;
+            amount = parseInt(cols[9], 10) || ((periodsCount * rate) + tutorFee);
+            originalTeacher = cols[10];
+            reason = cols[11];
+            category = cols[12] && cols[12].includes("公") ? cols[12] : "公(研習)";
+          }
 
           let classId = "801";
           let period = 1;
@@ -2980,25 +3633,31 @@
             period = 0;
           }
 
+          let courseType = "regular";
+          if (category.includes("身心調適")) courseType = "mentalHealth";
+          else if (category.includes("事假") || category.includes("病假")) courseType = "selfPaid";
+          else if (period === 8) courseType = "afterSchool";
+
           const taskObj = {
             id: `TASK_CSV_${date}_${classId}_${period}_${Date.now().toString().slice(-4)}_${i}`,
+            category: category,
             subTeacher: subTeacher,
             title: title || "教師",
             docNo: docNo,
             date: date,
-            dayOfWeek: dayOfWeek,
+            dayOfWeek: parseRocDate(date).dayOfWeek,
             classPeriod: classPeriod,
             classId: classId,
             period: period,
-            subject: note && note.includes("家政") ? "家政" : (classPeriod.includes("代導") ? "代理導師業務" : "課堂授課"),
-            courseType: period === 8 ? "afterSchool" : "regular",
+            subject: classPeriod.includes("代導") ? "代理導師業務" : "課堂授課",
+            courseType: courseType,
             periodsCount: periodsCount,
             rate: rate,
             tutorFee: tutorFee,
             amount: amount,
             originalTeacher: originalTeacher,
             reason: reason,
-            note: note || "—"
+            note: tutorFee > 0 ? "兼代導" : category
           };
 
           upsertTask(taskObj);
@@ -3010,14 +3669,13 @@
         renderScheduleGrid(appData.currentScheduleClass);
         renderRadarWorkspace();
 
-        // 若有綁定 Apps Script 網址，整批推播至 Google 試算表
         if (getCloudGasUrl()) {
           pushToCloud({
             action: "syncAll",
             tasks: appData.tasks,
             swaps: appData.swaps
           }, false);
-          showToast(`✅ 成功匯入 ${importedCount} 筆排代資料，並已同步推播至 Google 試算表！`);
+          showToast(`✅ 成功匯入 ${importedCount} 筆標準 12 欄排代資料，並已同步推播至 Google 試算表！`);
         } else {
           showToast(`✅ 成功匯入 ${importedCount} 筆資料！(提醒：尚未設定試算表同步網址)`, "ℹ️");
         }
