@@ -224,3 +224,21 @@ window.renderRosterTable = renderRosterTable;
 window.adminResetTeacherPassword = adminResetTeacherPassword;
 window.confirmResetLocalStorage = confirmResetLocalStorage;
 window.updateCloudStatus = updateCloudStatus;
+// 確保 saveCloudSettings 在任何情況下都存在備援
+if (typeof window.saveCloudSettings === 'undefined') {
+  window.saveCloudSettings = function() {
+    const apiInput = document.getElementById('settingApiUrl');
+    if (!apiInput) return;
+    const url = apiInput.value.trim();
+    if (url && url.startsWith('http')) {
+      if (!window.appData) window.appData = { config: {} };
+      if (!window.appData.config) window.appData.config = {};
+      window.appData.config.apiUrl = url;
+      localStorage.setItem('feisha_config_115_1', JSON.stringify(window.appData.config));
+      alert('✅ 雲端 API 網址已儲存套用！');
+      if (typeof updateCloudStatus === 'function') updateCloudStatus();
+    } else {
+      alert('⚠️ 請填入以 /exec 結尾的完整網址！');
+    }
+  };
+}

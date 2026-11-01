@@ -1,21 +1,3 @@
-Uncaught ReferenceError: saveCloudSettings is not defined at HTMLButtonElement.onclick
-```
-
-### 一、 造成連鎖問題的原因
-
-1. **`saveCloudSettings` 函式缺失**：您的 `js/cloud.js` 檔案中缺少了 `saveCloudSettings` 的定義（或尚未建立該檔案），導致點擊 **「💾 儲存並套用設定」** 按鈕時直接觸發未定義錯誤。
-2. **網址未成功存入變數**：因為第一步點擊儲存失敗，輸入框中的 Apps Script 網址沒有被寫入系統與快取中[cite: 7]。
-3. **拉取資料判定為空**：接著點擊 **「📥 從試算表拉取最新資料」** 時，程式讀取到的是空的網址，因而跳出 `⚠️ 尚未設定 Google Apps Script Web App 網址` 的提示視窗[cite: 7]。
-
----
-
-### 二、 解決方案：建立/覆蓋 `feisha-schedule-system/js/cloud.js`
-
-請在專案的 `js/` 資料夾中建立（或覆蓋）**`cloud.js`**，將以下完整程式碼存入。
-
-此版本加入了**防呆自適應機制**：點擊拉取時，若偵測到輸入框已有網址，即使未按「儲存」也會自動辨識並存檔，杜絕彈窗阻擋：
-
-```javascript
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
  * 課務排代、調課與月結管理系統 - 雲端同步與 Apps Script API 串接模組 (js/cloud.js)
@@ -66,19 +48,20 @@ function saveCloudSettings() {
 // ==========================================
 async function pullFromCloud() {
   const apiInput = document.getElementById('settingApiUrl');
+  // 智慧防呆：優先讀取輸入框中當前文字，若輸入框有值直接取用
   let url = (apiInput ? apiInput.value.trim() : '') || window.appData?.config?.apiUrl;
 
-  // 防呆自動抓取：若輸入框有填寫網址，自動儲存並取用
   if (!url || !url.startsWith('http') || !url.includes('/exec')) {
     alert('⚠️ 尚未設定 Google Apps Script Web App 網址，或網址格式不正確。\n請至「模組 6：名冊與系統設定」填入以 /exec 結尾的 API 網址。');
     return;
   }
 
-  if (window.appData?.config) {
-    window.appData.config.apiUrl = url;
-    if (typeof saveToLocalStorage === 'function') saveToLocalStorage();
-    if (typeof updateCloudStatus === 'function') updateCloudStatus();
-  }
+  // 自動寫入快取，免去先按儲存的繁瑣步驟
+  if (!window.appData) window.appData = { config: {} };
+  if (!window.appData.config) window.appData.config = {};
+  window.appData.config.apiUrl = url;
+  if (typeof saveToLocalStorage === 'function') saveToLocalStorage();
+  if (typeof updateCloudStatus === 'function') updateCloudStatus();
 
   // 介面讀取反饋
   const pullBtn = document.querySelector("button[onclick='pullFromCloud()']");
