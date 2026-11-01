@@ -2,8 +2,8 @@
  * 雲林縣立飛沙國民中學 115學年度第1學期
  * 課務排代、調課與月結管理系統 - 標準 12 欄清冊模組 (js/tasks.js)
  * 升級功能：
- * 1. 表頭全欄位點擊即時排序 (代課日期、姓名、金額、節數、班級)
- * 2. 9月份民國日期自動正規化補零引擎 (杜絕 115901 造成 Google 日曆漂移到 1922 年)
+ * 1. 表頭全欄位點擊即時排序 (代課日期、姓名、金額、節數、班級、種類)
+ * 2. 民國日期強固標準化補零引擎
  */
 
 let pendingCsvContent = '';
@@ -13,61 +13,49 @@ let taskSortColumn = 'date';    // 預設排序欄位：代課日期
 let taskSortDirection = 'asc';  // 'asc' (升冪) 或 'desc' (降冪)
 
 // ==========================================
-// 1. 民國日期強固標準化引擎 (徹底解決 9 月日曆問題)
+// 1. 民國日期標準化引擎
 // ==========================================
 function normalizeRocDate(rawDate) {
   if (!rawDate) return '';
   const s = String(rawDate).trim();
 
-  // 情況 A：含分隔符號 (例: 115/9/1, 115-9-15, 115.9.3, 2026/09/01)
   if (s.includes('/') || s.includes('-') || s.includes('.')) {
     const parts = s.split(/[\/\-\.]/);
     if (parts.length >= 3) {
       let y = parseInt(parts[0], 10);
-      if (y > 1900) y -= 1911; // 西元轉民國
+      if (y > 1900) y -= 1911;
       const m = String(parseInt(parts[1], 10)).padStart(2, '0');
       const d = String(parseInt(parts[2], 10)).padStart(2, '0');
       return `${y}${m}${d}`;
     }
   }
 
-  // 情況 B：純數字字串
   const num = s.replace(/[^0-9]/g, '');
-  if (num.length === 7) {
-    return num; // 標準 7 碼 (例: 1150901, 1151001)
-  }
+  if (num.length === 7) return num;
   
-  if (num.length === 6) {
-    // 6 碼處理：115901 (115年9月01日) 或 115091 (115年09月1日)
-    if (num.startsWith('115')) {
-      const monthPart = parseInt(num.substring(3, 4), 10);
-      if (monthPart === 9) {
-        // 115 + 9 + 01 -> 1150901
-        const d = num.substring(4).padStart(2, '0');
-        return `11509${d}`;
-      } else {
-        // 115 + 10 + 1 -> 1151001
-        const m = num.substring(3, 5);
-        const d = num.substring(5).padStart(2, '0');
-        return `115${m}${d}`;
-      }
+  if (num.length === 6 && num.startsWith('115')) {
+    const monthPart = parseInt(num.substring(3, 4), 10);
+    if (monthPart === 9) {
+      const d = num.substring(4).padStart(2, '0');
+      return `11509${d}`;
+    } else {
+      const m = num.substring(3, 5);
+      const d = num.substring(5).padStart(2, '0');
+      return `115${m}${d}`;
     }
   }
 
-  if (num.length === 5) {
-    // 5 碼處理：11591 (115年9月1日) -> 1150901
-    if (num.startsWith('115')) {
-      const m = String(parseInt(num.substring(3, 4), 10)).padStart(2, '0');
-      const d = String(parseInt(num.substring(4, 5), 10)).padStart(2, '0');
-      return `115${m}${d}`;
-    }
+  if (num.length === 5 && num.startsWith('115')) {
+    const m = String(parseInt(num.substring(3, 4), 10)).padStart(2, '0');
+    const d = String(parseInt(num.substring(4, 5), 10)).padStart(2, '0');
+    return `115${m}${d}`;
   }
 
   return num;
 }
 
 // ==========================================
-// 2. 表頭點擊排序控制器
+// 2. 表頭排序控制常式
 // ==========================================
 function toggleTaskSort(columnKey) {
   if (taskSortColumn === columnKey) {
@@ -79,9 +67,6 @@ function toggleTaskSort(columnKey) {
   renderTasksTable();
 }
 
-/**
- * 取得表頭排序箭頭圖示
- */
 function getSortIndicator(columnKey) {
   if (taskSortColumn !== columnKey) {
     return '<span class="text-slate-300 ml-1 text-[10px]">↕</span>';
@@ -92,7 +77,7 @@ function getSortIndicator(columnKey) {
 }
 
 // ==========================================
-// 3. 標準 12 欄清冊表格渲染引擎 (支援排序)
+// 3. 標準 12 欄清冊動態渲染 (含排序)
 // ==========================================
 function renderTasksTable() {
   const table = document.querySelector('#module2 table');
@@ -111,7 +96,7 @@ function renderTasksTable() {
 
   if (emptyHint) emptyHint.classList.add('hidden');
 
-  // 動態更新表頭 (賦予可點擊與視覺回饋)
+  // 動態更新可點擊排序表頭
   if (thead) {
     thead.innerHTML = `
       <tr class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold whitespace-nowrap select-none">
@@ -163,7 +148,6 @@ function renderTasksTable() {
     } else if (taskSortColumn === 'date') {
       valA = parseInt(normalizeRocDate(valA), 10) || 0;
       valB = parseInt(normalizeRocDate(valB), 10) || 0;
-      // 日期相同時，次要排序依節次排序
       if (valA === valB) {
         const pA = Number(a.period) || 1;
         const pB = Number(b.period) || 1;
@@ -181,7 +165,7 @@ function renderTasksTable() {
 
   let html = '';
 
-  tasks.forEach((item, index) => {
+  tasks.forEach((item) => {
     const periods = Number(item.periods) || 0;
     const hourlyRate = Number(item.hourlyRate) || 455;
     const homeroomFee = Number(item.homeroomFee) || 0;
@@ -198,7 +182,6 @@ function renderTasksTable() {
       typeBadgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
     }
 
-    // 找到在原始 appData.tasks 中的真實索引
     const origIndex = window.appData.tasks.findIndex(t => t.id === item.id);
 
     html += `
@@ -243,7 +226,7 @@ function renderTasksTable() {
 }
 
 // ==========================================
-// 4. RFC 4180 標準 CSV 解析與匯入引擎
+// 4. RFC 4180 標準 CSV 解析與匯入
 // ==========================================
 function parseRFC4180CSV(text) {
   let prevChar = '';
@@ -338,9 +321,9 @@ function processCsvUpload() {
   const colHomeFee = cleanedHeader.findIndex(h => h.includes('代理導師費') || h.includes('導師費'));
   const colOrigTeacher = cleanedHeader.findIndex(h => h.includes('被代課') || h.includes('原任'));
   const colReason = cleanedHeader.findIndex(h => h.includes('事由') || h.includes('原因'));
-  const colClassPeriod = cleanedHeader.findIndex(h => h.includes('班級/節') || h.includes('班級') || h.includes('授課班'));
+  const colClassPeriod = cleanedHeader.findIndex(h => h.includes('班級/節') || h.includes('班級/堂') || h.includes('班級') || h.includes('授課班'));
 
-  let importedCount = 0;
+  let importedTasks = [];
 
   for (let r = 1; r < parsedRows.length; r++) {
     const row = parsedRows[r].map(c => c.trim());
@@ -353,9 +336,7 @@ function processCsvUpload() {
     let taskType = colType !== -1 ? row[colType] : row[0];
     if (!taskType || taskType === '公') taskType = '公假';
 
-    // 關鍵修復：呼叫 normalizeRocDate 自動補零轉為標準 7 碼民國年
     const dateFormatted = normalizeRocDate(rawDate);
-
     let rawClassPeriod = colClassPeriod !== -1 ? row[colClassPeriod] : (row[11] || '801 第1節');
     let formattedClassPeriod = rawClassPeriod;
     let periodNumber = 1;
@@ -384,7 +365,7 @@ function processCsvUpload() {
     const docNo = colDocNo !== -1 ? row[colDocNo] : '1151001';
     const title = colTitle !== -1 ? row[colTitle] : '專任教師';
 
-    const taskObject = {
+    importedTasks.push({
       id: 'task_' + Date.now() + '_' + r,
       type: taskType,
       subTeacher: subName,
@@ -399,11 +380,11 @@ function processCsvUpload() {
       classPeriod: formattedClassPeriod,
       period: periodNumber,
       subject: inferSubject(formattedClassPeriod, origTeacher)
-    };
-
-    window.appData.tasks.push(taskObject);
-    importedCount++;
+    });
   }
+
+  // 整批取代全域清冊，避免重複累加
+  window.appData.tasks = importedTasks;
 
   if (typeof saveToLocalStorage === 'function') saveToLocalStorage();
   renderTasksTable();
@@ -411,7 +392,7 @@ function processCsvUpload() {
   if (typeof renderReportTable === 'function') renderReportTable();
 
   closeCsvUploadModal();
-  alert(`✅ 成功匯入並解析 ${importedCount} 筆標準 12 欄排代資料！\n日期已全數標準化，日曆行程已同步推播。`);
+  alert(`✅ 成功匯入並解析 ${importedTasks.length} 筆標準 12 欄排代資料！\n點選表頭欄位即可自由排序。`);
 
   if (window.appData.config.apiUrl && typeof pushToCloud === 'function') {
     pushToCloud();
@@ -481,7 +462,6 @@ function handleAddTaskSubmit(event) {
     const parts = rawClassPeriod.split('/');
     const className = parts[0].trim();
     const pPart = parts[1].trim();
-
     if (pPart.includes('導')) {
       formattedCp = `${className} 全日代導`;
       periodNumber = 0;
@@ -524,7 +504,7 @@ function handleAddTaskSubmit(event) {
   if (typeof renderReportTable === 'function') renderReportTable();
 
   closeAddTaskModal();
-  alert('✅ 手動新增排代成功！課表與日曆已即時連動更新。');
+  alert('✅ 手動新增排代成功！');
 
   if (window.appData.config.apiUrl && typeof pushToCloud === 'function') {
     pushToCloud();

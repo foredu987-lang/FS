@@ -1,7 +1,9 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
- * 課務排代、調課與月結管理系統 - 核心主控與狀態管理模組 (js/app.js)
- * 升級：開頁優先載入雲端同步至本機的動態課表與教師編制
+ * 課務排代、調課與月結管理系統 - 主控模組 (js/app.js)
+ * 升級功能：
+ * 1. 組長管理鎖 (預設 fatman，無前端提示，可由試算表自訂)
+ * 2. 模組 6 教師名冊顯示「一鍵重設密碼為 1234」
  */
 
 const STORAGE_KEY_TASKS = 'feisha_tasks_115_1';
@@ -10,13 +12,16 @@ const STORAGE_KEY_CONFIG = 'feisha_config_115_1';
 const STORAGE_KEY_CUSTOM_SCHEDULE = 'feisha_schedule_matrix_115_1';
 const STORAGE_KEY_CUSTOM_ROSTER = 'feisha_teacher_roster_115_1';
 
+window.isAdminUnlocked = false; // 組長解鎖狀態
+
 window.appData = {
   tasks: [],
   swaps: [],
   config: {
     apiUrl: '',
     calendarId: window.FEISHA_CONFIG_CONSTANTS ? window.FEISHA_CONFIG_CONSTANTS.defaultCalendarId : 'c_9f7d9e917c79ee2de6f54ed275f97d9bfdb493ba457a0135b69438213e217ba6@group.calendar.google.com',
-    reminderMinutes: 15
+    reminderMinutes: 15,
+    adminPassword: 'fatman'
   }
 };
 
@@ -49,7 +54,6 @@ function loadFromLocalStorage() {
     const savedSchedule = localStorage.getItem(STORAGE_KEY_CUSTOM_SCHEDULE);
     const savedRoster = localStorage.getItem(STORAGE_KEY_CUSTOM_ROSTER);
 
-    // 1. 若本機快取中有從雲端試算表拉取的課表，優先套用
     if (savedSchedule) {
       const parsedSched = JSON.parse(savedSchedule);
       if (Array.isArray(parsedSched) && parsedSched.length > 0) {
@@ -57,7 +61,6 @@ function loadFromLocalStorage() {
       }
     }
 
-    // 2. 若本機快取中有從雲端試算表拉取的教師名冊，優先套用
     if (savedRoster) {
       const parsedRoster = JSON.parse(savedRoster);
       if (parsedRoster && Object.keys(parsedRoster).length > 0) {
@@ -95,17 +98,41 @@ function saveToLocalStorage() {
   } catch (e) {}
 }
 
-function confirmResetLocalStorage() {
-  if (window.confirm('⚠️ 確定要徹底清空本機暫存嗎？此動作將清除自訂課表快取並回復系統預設底冊。')) {
-    localStorage.removeItem(STORAGE_KEY_TASKS);
-    localStorage.removeItem(STORAGE_KEY_SWAPS);
-    localStorage.removeItem(STORAGE_KEY_CUSTOM_SCHEDULE);
-    localStorage.removeItem(STORAGE_KEY_CUSTOM_ROSTER);
-    window.appData.tasks = [];
-    window.appData.swaps = [];
-    
-    // 重新載入頁面回復初始值
-    window.location.reload();
+/**
+ * 組長管理鎖切換 (密碼為 fatman)
+ */
+function toggleAdminLock() {
+  if (window.isAdminUnlocked) {
+    window.isAdminUnlocked = false;
+    updateAdminUi();
+    alert('🔒 已切換為一般同仁檢視模式。');
+    return;
+  }
+
+  const inputPwd = window.prompt('🔑 請輸入課務組長管理密碼：');
+  if (inputPwd === null) return;
+
+  const realAdminPwd = window.appData?.config?.adminPassword || 'fatman';
+
+  if (inputPwd.trim() === realAdminPwd) {
+    window.isAdminUnlocked = true;
+    updateAdminUi();
+    renderRosterTable();
+    alert('🔓 課務組長身分驗證成功！最高權限已解鎖。');
+  } else {
+    alert('❌ 密碼不正確！');
+  }
+}
+
+function updateAdminUi() {
+  const lockBtn = document.getElementById('adminLockBtn');
+  if (!lockBtn) return;
+  if (window.isAdminUnlocked) {
+    lockBtn.className = "px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm";
+    lockBtn.innerHTML = "<span>👤 課務組長 (已解鎖)</span> <span class='text-[10px] underline ml-1'>登出</span>";
+  } else {
+    lockBtn.className = "px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition";
+    lockBtn.innerHTML = "<span>🔒 一般教師 (點擊解鎖)</span>";
   }
 }
 
@@ -159,24 +186,61 @@ function renderRosterTable() {
     }).join('、');
 
     html += `
-      <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
+      <tr class="hover:bg-slate-50 border-b border-slate-100 transition text-xs">
         <td class="py-2.5 px-3 font-bold text-slate-800">${name}</td>
         <td class="py-2.5 px-3 text-slate-600">${teacher.title}</td>
         <td class="py-2.5 px-3 text-center font-mono font-semibold">${teacher.baseHours}</td>
         <td class="py-2.5 px-3 text-center font-mono font-bold text-amber-700">+${teacher.overloadHours}</td>
         <td class="py-2.5 px-3 text-[11px] text-indigo-700 font-semibold">${periodsFormatted || '無固定兼課'}</td>
+        <td class="py-2.5 px-3 text-center">
+          ${window.isAdminUnlocked ? `
+            <button onclick="adminResetTeacherPassword('${name}')" class="px-2 py-1 text-[11px] font-bold rounded bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition shadow-2xs">
+              🔄 復原為 1234
+            </button>
+          ` : `
+            <span class="text-slate-400 font-mono">••••</span>
+          `}
+        </td>
       </tr>
     `;
   });
   tbody.innerHTML = html;
 }
 
-function saveCloudSettings() {
-  const apiUrlInput = document.getElementById('settingApiUrl');
-  if (apiUrlInput) window.appData.config.apiUrl = apiUrlInput.value.trim();
-  saveToLocalStorage();
-  updateCloudStatus();
-  alert('💾 系統設定已成功保存！');
+/**
+ * 組長一鍵將同仁密碼復原為預設 1234
+ */
+function adminResetTeacherPassword(teacherName) {
+  if (!window.isAdminUnlocked) {
+    alert('請先解鎖課務組長權限！');
+    return;
+  }
+
+  if (window.confirm(`確定要將【${teacherName} 老師】的調課密碼復原為預設的「1234」嗎？`)) {
+    const roster = window.TEACHER_ROSTER || {};
+    if (roster[teacherName]) {
+      roster[teacherName].password = '1234';
+      localStorage.setItem('feisha_teacher_roster_115_1', JSON.stringify(roster));
+    }
+
+    const apiUrl = window.appData?.config?.apiUrl;
+    if (apiUrl && apiUrl.startsWith('http')) {
+      fetch(apiUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'updateTeacherPassword',
+          teacherName: teacherName,
+          newPassword: '1234'
+        })
+      }).then(() => {
+        alert(`✅ 【${teacherName} 老師】密碼已順利重設為 1234！`);
+      });
+    } else {
+      alert(`✅ 【${teacherName} 老師】密碼已在本機重設為 1234！`);
+    }
+  }
 }
 
 function updateCloudStatus() {
@@ -192,26 +256,11 @@ function updateCloudStatus() {
   }
 }
 
-function copyToClipboard(text) {
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text);
-  } else {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-  }
-}
-
 window.loadFromLocalStorage = loadFromLocalStorage;
 window.saveToLocalStorage = saveToLocalStorage;
-window.confirmResetLocalStorage = confirmResetLocalStorage;
+window.toggleAdminLock = toggleAdminLock;
 window.switchTab = switchTab;
 window.initTeacherSelects = initTeacherSelects;
 window.renderRosterTable = renderRosterTable;
-window.saveCloudSettings = saveCloudSettings;
+window.adminResetTeacherPassword = adminResetTeacherPassword;
 window.updateCloudStatus = updateCloudStatus;
-window.copyToClipboard = copyToClipboard;

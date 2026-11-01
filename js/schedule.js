@@ -1,7 +1,7 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
- * 課務排代、調課與月結管理系統 - 動態課表與週次導航模組 (js/schedule.js)
- * 修正：移除所有教室顯示標籤，維持課表格子乾淨簡潔
+ * 課務排代、調課與月結管理系統 - 動態課表模組 (js/schedule.js)
+ * 升級：字體放大 (科目 16px、教師 14px)，填滿格網消除無效留白
  */
 
 window.currentWeek = 1;
@@ -33,7 +33,6 @@ function initAcademicWeek() {
 function getWeekDates(weekNum) {
   const config = window.FEISHA_CONFIG_CONSTANTS || { startDate: '2026-08-31T00:00:00' };
   const semStart = new Date(config.startDate);
-  
   const monday = new Date(semStart);
   monday.setDate(monday.getDate() + (weekNum - 1) * 7);
 
@@ -55,7 +54,6 @@ function getWeekDates(weekNum) {
       dateObj: currentDay
     });
   }
-
   return weekDates;
 }
 
@@ -75,9 +73,7 @@ function populateWeekSelect() {
     const opt = document.createElement('option');
     opt.value = w;
     opt.textContent = label;
-    if (w === window.currentWeek) {
-      opt.selected = true;
-    }
+    if (w === window.currentWeek) opt.selected = true;
     select.appendChild(opt);
   }
 }
@@ -164,19 +160,19 @@ function renderScheduleGrid() {
 
   let theadHtml = `
     <tr>
-      <th class="py-3 px-2 text-xs font-bold text-slate-500 border-r border-slate-200 w-20 bg-slate-50">節次</th>
+      <th class="py-3 px-2 text-xs font-bold text-slate-500 border-r border-slate-200 w-24 bg-slate-50">節次</th>
   `;
 
   weekdayNames.forEach((wName, index) => {
     const dInfo = weekDates[index];
     const isToday = dInfo.fullRoc === currentRocToday;
     theadHtml += `
-      <th class="py-3 px-2 text-xs border-r border-slate-200 transition ${isToday ? 'bg-indigo-50/80 text-indigo-900 font-extrabold' : 'text-slate-700 font-bold'}">
-        <div class="flex items-center justify-center gap-1.5">
+      <th class="py-3 px-2 border-r border-slate-200 transition ${isToday ? 'bg-indigo-50/90 text-indigo-900 font-extrabold' : 'text-slate-700 font-bold'}">
+        <div class="flex items-center justify-center gap-1.5 text-sm">
           <span>${wName}</span>
-          ${isToday ? '<span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-ping"></span>' : ''}
+          ${isToday ? '<span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>' : ''}
         </div>
-        <div class="text-[11px] font-mono mt-0.5 ${isToday ? 'text-indigo-600 font-bold' : 'text-slate-400'}">
+        <div class="text-xs font-mono mt-0.5 ${isToday ? 'text-indigo-600 font-bold' : 'text-slate-400'}">
           ${dInfo.month}/${dInfo.date}
         </div>
       </th>
@@ -200,7 +196,7 @@ function renderScheduleGrid() {
     (tConfig.overloadPeriods || []).forEach(pCode => {
       const [d, p] = pCode.split('-');
       badgesHtml += `
-        <span class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-bold shadow-xs">
+        <span class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-bold shadow-2xs">
           ⚡ ${dayNameMap[d] || d} 第 ${p} 節 (超鐘點兼課)
         </span>
       `;
@@ -218,12 +214,12 @@ function renderScheduleGrid() {
     const isEighth = pNum === 8;
 
     tbodyHtml += `
-      <tr class="hover:bg-slate-50/60 transition ${isEighth ? 'bg-purple-50/20' : ''}">
-        <td class="py-2 px-2 border-r border-slate-200 bg-slate-50/80 text-center align-middle">
-          <div class="text-xs font-bold ${isEighth ? 'text-purple-900' : 'text-slate-700'}">${periodItem.name}</div>
-          <div class="text-[10px] text-slate-400 font-mono mt-0.5">${periodItem.startTime}</div>
-          <div class="text-[10px] text-slate-400 font-mono">${periodItem.endTime}</div>
-          ${isEighth ? '<span class="inline-block mt-1 text-[9px] px-1 bg-purple-100 text-purple-700 font-bold rounded">第八節</span>' : ''}
+      <tr class="hover:bg-slate-50/50 transition ${isEighth ? 'bg-purple-50/20' : ''}">
+        <td class="py-2.5 px-2 border-r border-slate-200 bg-slate-50/90 text-center align-middle">
+          <div class="text-sm font-black ${isEighth ? 'text-purple-900' : 'text-slate-800'}">${periodItem.name}</div>
+          <div class="text-[11px] text-slate-500 font-mono mt-0.5">${periodItem.startTime}</div>
+          <div class="text-[11px] text-slate-500 font-mono">${periodItem.endTime}</div>
+          ${isEighth ? '<span class="inline-block mt-1 text-[10px] px-1.5 py-0.2 bg-purple-100 text-purple-800 font-bold rounded">第八節</span>' : ''}
         </td>
     `;
 
@@ -266,53 +262,53 @@ function renderScheduleGrid() {
         isOverload = (roster[currentTarget].overloadPeriods || []).includes(periodKey);
       }
 
-      tbodyHtml += `<td class="py-2 px-2 border-r border-slate-200 h-20 align-middle text-left relative">`;
+      // 格子內襯縮減為 p-1.5，高度 h-24，讓內容滿版擴展
+      tbodyHtml += `<td class="p-1.5 border-r border-slate-200 h-24 align-middle text-left relative">`;
 
       if (activeTask) {
         tbodyHtml += `
-          <div class="p-2 rounded-lg bg-emerald-50 border border-emerald-300 text-xs shadow-xs space-y-1">
+          <div class="h-full w-full p-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-xs shadow-2xs flex flex-col justify-between">
             <div class="flex items-center justify-between">
-              <span class="font-bold text-emerald-950 truncate">${activeTask.subject || '代課'}</span>
-              <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-200 text-emerald-800 font-bold">公費代</span>
+              <span class="text-base font-black text-emerald-950 truncate tracking-wide">${activeTask.subject || '代課'}</span>
+              <span class="text-[11px] px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900 font-extrabold">公費代</span>
             </div>
-            <div class="text-[11px] text-emerald-800 font-semibold truncate">代課師：${activeTask.subTeacher}</div>
-            <div class="text-[10px] text-emerald-600 truncate">原任：${activeTask.origTeacher}</div>
+            <div class="text-sm text-emerald-900 font-bold truncate">代課：${activeTask.subTeacher}</div>
+            <div class="text-xs text-emerald-700 truncate">原任：${activeTask.origTeacher}</div>
           </div>
         `;
       } else if (activeSwap) {
         tbodyHtml += `
-          <div class="p-2 rounded-lg bg-indigo-50 border border-indigo-300 text-xs shadow-xs space-y-1">
+          <div class="h-full w-full p-2.5 rounded-lg bg-indigo-50 border border-indigo-300 text-xs shadow-2xs flex flex-col justify-between">
             <div class="flex items-center justify-between">
-              <span class="font-bold text-indigo-950 truncate">互調課</span>
-              <span class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-200 text-indigo-800 font-bold">調課</span>
+              <span class="text-base font-black text-indigo-950 truncate tracking-wide">互調課</span>
+              <span class="text-[11px] px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-900 font-extrabold">調課</span>
             </div>
-            <div class="text-[11px] text-indigo-800 truncate">${activeSwap.origTeacher} ⇄ ${activeSwap.targetTeacher}</div>
+            <div class="text-xs text-indigo-900 font-bold truncate">${activeSwap.origTeacher} ⇄ ${activeSwap.targetTeacher}</div>
           </div>
         `;
       } else if (baseClass) {
-        // 常態課堂卡片：完全移除教室 span，版面俐落
+        // 常態課堂卡片：科目 16px、教師 14px，滿版微底色
         tbodyHtml += `
-          <div class="p-1.5 rounded-lg border border-transparent hover:border-slate-300 transition text-xs">
+          <div class="h-full w-full p-2.5 rounded-lg border border-slate-200/80 bg-white hover:border-indigo-400 hover:shadow-xs transition flex flex-col justify-between">
             <div class="flex items-center justify-between gap-1">
-              <span class="font-bold text-slate-800 text-xs">${baseClass.subject}</span>
+              <span class="text-base font-black text-slate-800 tracking-wide truncate">${baseClass.subject}</span>
               ${isOverload || baseClass.isOvertime ? `
-                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
                   ⚡兼課
                 </span>
               ` : ''}
             </div>
-            <div class="text-[11px] text-slate-500 mt-1">
+            <div class="text-sm font-semibold text-slate-600 mt-1 flex items-center justify-between">
               <span>${scheduleViewMode === 'class' ? baseClass.teacher : baseClass.classId + '班'}</span>
             </div>
           </div>
         `;
       } else {
-        tbodyHtml += `<div class="h-full flex items-center justify-center text-slate-300 text-xs"><span>—</span></div>`;
+        tbodyHtml += `<div class="h-full w-full flex items-center justify-center text-slate-300 text-sm"><span>—</span></div>`;
       }
 
       tbodyHtml += `</td>`;
     }
-
     tbodyHtml += `</tr>`;
   });
 

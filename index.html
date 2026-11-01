@@ -3,711 +3,655 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>雲林縣立飛沙國民中學 課務排代、調課與月結管理系統 (115-1學期)</title>
-  <!-- Tailwind CSS CDN -->
+  <title>雲林縣立飛沙國民中學 115-1 課務排代、調課與月結管理系統</title>
+  <!-- 引入 Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-              800: '#3730a3',
-              900: '#312e81',
-            }
-          }
-        }
-      }
-    }
-  </script>
   <style>
     @media print {
-      .no-print { display: none !important; }
-      .print-only { display: block !important; }
-      body { background: white !important; font-size: 11pt; color: black !important; }
-      .page-break { page-break-before: always; }
-      table { border-collapse: collapse !important; width: 100% !important; }
-      th, td { border: 1px solid #4b5563 !important; }
+      .no-print, header, nav, #adminLockBtn, .modal-overlay {
+        display: none !important;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+        padding: 0 !important;
+      }
+      .tab-content {
+        display: block !important;
+      }
+      #module1, #module2, #module3, #module4, #module6 {
+        display: none !important;
+      }
+      #module5 {
+        display: block !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
     }
-    .print-only { display: none; }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
 
-  <!-- 頂部主導覽列 -->
+  <!-- ==================== 頂部全域導航列 ==================== -->
   <header class="bg-slate-900 text-white shadow-md border-b border-slate-800 sticky top-0 z-40 no-print">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <!-- 系統識別 -->
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-lg text-white shadow">
-            沙
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="text-base font-bold tracking-tight">飛沙國中 課務排代與月結管理系統</span>
-              <span class="text-[11px] px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-mono">115-1學期</span>
-            </div>
-            <p class="text-xs text-slate-400">標準 12 欄公文清冊 · Google 日曆雙向同步</p>
-          </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+      <!-- 系統標題 -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-xl font-black shadow-md shadow-indigo-500/30">
+          飛
         </div>
-
-        <!-- 頂部功能快捷按鈕 -->
-        <div class="flex items-center gap-2 sm:gap-3">
-          <!-- 身分權限切換按鈕 (組長解鎖 / 一般教師) -->
-          <button id="roleToggleBtn" onclick="openLoginModal()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
-            <span>👤</span>
-            <span>一般教師 (點擊解鎖)</span>
-          </button>
-
-          <!-- 共同日曆快捷入口 -->
-          <a id="calendarLinkBtn" href="https://calendar.google.com/calendar/u/0/r?cid=c_9f7d9e917c79ee2de6f54ed275f97d9bfdb493ba457a0135b69438213e217ba6@group.calendar.google.com" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 transition">
-            <span>📅</span>
-            <span class="hidden sm:inline">共同日曆</span>
-          </a>
-
-          <!-- 雲端連線狀態指示 -->
-          <button onclick="switchTab('module6')" id="cloudStatusBtn" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition">
-            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="cloudStatusDot"></span>
-            <span id="cloudStatusText">本機離線模式</span>
-          </button>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-black tracking-wide text-white">雲林縣立飛沙國民中學</h1>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-300 border border-indigo-400/30 font-bold">115-1 學期</span>
+          </div>
+          <p class="text-xs text-slate-400 font-medium">課務排代、調課與月結造冊整合管理系統</p>
         </div>
       </div>
 
-      <!-- 模組頁籤切換器 -->
-      <nav class="flex space-x-1 overflow-x-auto py-2 border-t border-slate-800 text-xs font-semibold">
-        <button onclick="switchTab('module1')" id="tab-module1" class="tab-btn px-3 py-2 rounded-lg text-white bg-indigo-600 transition whitespace-nowrap">
+      <!-- 右側：雲端連線狀態與權限鎖 -->
+      <div class="flex items-center gap-3">
+        <!-- 雲端狀態指示燈 -->
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-xs font-medium text-slate-300">
+          <span id="cloudStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="cloudStatusText">本機離線模式</span>
+        </div>
+
+        <!-- 組長最高管理權限鎖 (預設密碼 fatman，不給提示) -->
+        <button id="adminLockBtn" onclick="toggleAdminLock()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition border border-slate-700 hover:border-slate-600 shadow-xs">
+          <span>🔒 一般教師 (點擊解鎖)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 6 大功能模組分頁導航 -->
+    <nav class="bg-slate-900/90 border-t border-slate-800/80 px-4 sm:px-6 lg:px-8">
+      <div class="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto py-1.5 no-scrollbar">
+        <button id="tab-module1" onclick="switchTab('module1')" class="tab-btn px-3.5 py-2 rounded-lg text-white bg-indigo-600 transition text-xs sm:text-sm font-bold whitespace-nowrap">
           📅 模組 1：動態課表網格
         </button>
-        <button onclick="switchTab('module2')" id="tab-module2" class="tab-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">
-          📑 模組 2：標準 12 欄代課清冊
+        <button id="tab-module2" onclick="switchTab('module2')" class="tab-btn px-3.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition text-xs sm:text-sm font-semibold whitespace-nowrap">
+          📑 模組 2：標準 12 欄清冊
         </button>
-        <button onclick="switchTab('module3')" id="tab-module3" class="tab-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">
-          🔄 模組 3：同仁自辦調代課
+        <button id="tab-module3" onclick="switchTab('module3')" class="tab-btn px-3.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition text-xs sm:text-sm font-semibold whitespace-nowrap">
+          🔄 模組 3：同仁自辦互調課
         </button>
-        <button onclick="switchTab('module4')" id="tab-module4" class="tab-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">
-          ⚡ 模組 4：排代作業台 (矩陣)
+        <button id="tab-module4" onclick="switchTab('module4')" class="tab-btn px-3.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition text-xs sm:text-sm font-semibold whitespace-nowrap">
+          🎯 模組 4：智慧排代矩陣
         </button>
-        <button onclick="switchTab('module5')" id="tab-module5" class="tab-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">
-          🖨️ 模組 5：月結公文核銷中心
+        <button id="tab-module5" onclick="switchTab('module5')" class="tab-btn px-3.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition text-xs sm:text-sm font-semibold whitespace-nowrap">
+          💰 模組 5：月結公文核銷
         </button>
-        <button onclick="switchTab('module6')" id="tab-module6" class="tab-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">
+        <button id="tab-module6" onclick="switchTab('module6')" class="tab-btn px-3.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition text-xs sm:text-sm font-semibold whitespace-nowrap">
           ⚙️ 模組 6：名冊與系統設定
         </button>
-      </nav>
-    </div>
+      </div>
+    </nav>
   </header>
 
-  <!-- 主內容區 -->
+  <!-- ==================== 主要內容主容器 ==================== -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
 
-    <!-- ========================================== -->
-    <!-- 模組 1：動態課表網格 -->
-    <!-- ========================================== -->
-    <div id="module1" class="tab-content space-y-4">
-      <!-- 頂部控制列：週次選擇器 + 檢視目標切換 -->
-      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
-        <!-- 週次導航器 -->
+    <!-- ============================================================ -->
+    <!-- 模組 1：動態課表網格檢視                                      -->
+    <!-- ============================================================ -->
+    <section id="module1" class="tab-content space-y-4">
+      <!-- 頂部控制列 -->
+      <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3 no-print">
+        <!-- 週次導航 -->
         <div class="flex items-center gap-2 flex-wrap">
-          <button onclick="navigateWeek(-1)" class="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">◀ 上一週</button>
-          <select id="weekSelect" onchange="onWeekSelectChange(this.value)" class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs sm:text-sm font-bold text-indigo-700 bg-indigo-50/50 focus:ring-2 focus:ring-indigo-500">
-            <!-- 由 schedule.js 動態產生 1~21 週選單 -->
-          </select>
-          <button onclick="navigateWeek(1)" class="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">下一週 ▶</button>
-          <button onclick="goToCurrentWeek()" class="px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition">📅 回本週</button>
+          <div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+            <button onclick="navigateWeek(-1)" class="px-2.5 py-1 text-slate-600 hover:text-indigo-600 font-bold text-sm">◀ 上週</button>
+            <select id="weekSelect" onchange="onWeekSelectChange(this.value)" class="bg-transparent px-2 py-1 text-xs sm:text-sm font-bold text-slate-800 border-x border-slate-200 focus:outline-hidden">
+              <!-- JS 動態生成 21 週 -->
+            </select>
+            <button onclick="navigateWeek(1)" class="px-2.5 py-1 text-slate-600 hover:text-indigo-600 font-bold text-sm">下週 ▶</button>
+          </div>
+          <button onclick="goToCurrentWeek()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+            本週
+          </button>
         </div>
 
-        <!-- 檢視模式切換：依班級 / 依教師 -->
-        <div class="flex items-center gap-3">
-          <div class="inline-flex p-1 bg-slate-100 rounded-lg text-xs font-semibold">
-            <button id="viewModeClassBtn" onclick="setViewMode('class')" class="px-3 py-1 rounded-md bg-white shadow text-slate-800 transition font-bold">依班級</button>
-            <button id="viewModeTeacherBtn" onclick="setViewMode('teacher')" class="px-3 py-1 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold">依教師</button>
+        <!-- 檢視模式與對象選單 -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs">
+            <button id="viewModeClassBtn" onclick="setViewMode('class')" class="px-3 py-1 rounded-md bg-white shadow-xs text-slate-800 transition font-bold">班級課表</button>
+            <button id="viewModeTeacherBtn" onclick="setViewMode('teacher')" class="px-3 py-1 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold">教師課表</button>
           </div>
-          <select id="targetSelect" onchange="renderScheduleGrid()" class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs sm:text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500">
-            <!-- 動態注入班級或教師 -->
+          <select id="targetSelect" onchange="renderScheduleGrid()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs sm:text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 bg-white shadow-2xs">
+            <!-- JS 動態生成班級或教師清單 -->
           </select>
+          <button onclick="window.print()" class="px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-bold transition flex items-center gap-1 shadow-2xs">
+            🖨️ 列印課表
+          </button>
         </div>
       </div>
 
-      <!-- 教師兼課明細卡片 (切換為教師模式時自動浮現) -->
-      <div id="teacherOverloadCard" class="hidden bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <span class="text-2xl">👤</span>
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 id="cardTeacherName" class="text-base font-bold text-amber-950">—</h3>
-                <span id="cardTeacherTitle" class="text-xs px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-semibold">—</span>
-              </div>
-              <p id="cardWorkloadSummary" class="text-xs text-amber-800 mt-0.5">每週授課結構：基本授課 0 節 ＋ 兼課超鐘點 0 節 ＝ 每週總授課 0 節</p>
-            </div>
+      <!-- 教師超鐘點兼課專屬資訊卡 (選取教師檢視時自動浮現) -->
+      <div id="teacherOverloadCard" class="hidden bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 shadow-2xs">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-base font-black text-amber-950" id="cardTeacherName">教師姓名</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 font-bold" id="cardTeacherTitle">職稱</span>
           </div>
-          <div class="flex flex-wrap items-center gap-1.5" id="cardOverloadPeriodsList">
-            <!-- 動態注入指定兼課時段標籤 -->
-          </div>
+          <span class="text-xs font-bold text-amber-900" id="cardWorkloadSummary">每週排課統計</span>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap" id="cardOverloadPeriodsList">
+          <!-- JS 動態填入固定超鐘點兼課節次標籤 -->
         </div>
       </div>
 
-      <!-- 動態課表網格主體 -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <!-- 課表格網本體 (字體放大、滿版排版、無教室欄位) -->
+      <div class="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full text-center border-collapse text-xs sm:text-sm">
-            <thead id="scheduleThead" class="bg-slate-50 border-b border-slate-200">
-              <!-- 週一至週五與日期動態產生 -->
+          <table class="w-full border-collapse text-center">
+            <thead id="scheduleThead" class="border-b border-slate-200 bg-slate-50 select-none">
+              <!-- JS 動態生成日期表頭 -->
             </thead>
-            <tbody id="scheduleTbody" class="divide-y divide-slate-200">
-              <!-- 節次列動態產生 -->
+            <tbody id="scheduleTbody" class="divide-y divide-slate-100">
+              <!-- JS 動態生成放大版課表格子 -->
             </tbody>
           </table>
         </div>
       </div>
-    </div>
 
-    <!-- ========================================== -->
-    <!-- 模組 2：標準 12 欄代課清冊 -->
-    <!-- ========================================== -->
-    <div id="module2" class="tab-content hidden space-y-4">
-      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-            <span>📑</span> 標準 12 欄公課排代與代導總冊
-          </h2>
-          <p class="text-xs text-slate-500 mt-0.5">
-            符合雲林縣府標準格式 · 第 12 欄支援斜線格式（如：901/6、902/7）與自動科目推導
-          </p>
+      <!-- 底部圖例說明 -->
+      <div class="bg-white rounded-xl border border-slate-200 p-3 flex flex-wrap items-center gap-4 text-xs text-slate-500 no-print">
+        <span class="font-bold text-slate-700">課堂圖例：</span>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3.5 h-3.5 rounded-sm border border-slate-300 bg-white"></span>
+          <span>常態正規課</span>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <button onclick="openCsvUploadModal()" class="admin-only px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition flex items-center gap-1.5">
-            <span>📥</span> 上傳標準 12 欄清冊 (CSV)
-          </button>
-          <button onclick="downloadCsvTemplate()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition flex items-center gap-1.5">
-            <span>📄</span> 下載空白範本
-          </button>
-          <button onclick="openAddTaskModal()" class="admin-only px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition flex items-center gap-1.5">
-            <span>➕</span> 手動新增 1 筆排代
-          </button>
-          <button onclick="confirmResetLocalStorage()" class="admin-only px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition flex items-center gap-1.5">
-            <span>🗑️</span> 清空暫存重置
-          </button>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3.5 h-3.5 rounded-sm border border-amber-300 bg-amber-100 text-[10px] text-amber-900 font-black flex items-center justify-center">⚡</span>
+          <span class="font-bold text-amber-800">兼課超鐘點 (每週固定超額)</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3.5 h-3.5 rounded-sm border border-emerald-300 bg-emerald-100"></span>
+          <span class="font-bold text-emerald-800">公費代課派代</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3.5 h-3.5 rounded-sm border border-indigo-300 bg-indigo-100"></span>
+          <span class="font-bold text-indigo-800">同仁自辦互調課</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3.5 h-3.5 rounded-sm border border-purple-200 bg-purple-100 text-[10px] text-purple-800 font-bold flex items-center justify-center">8</span>
+          <span class="text-purple-800 font-semibold">第八節課後輔導</span>
         </div>
       </div>
+    </section>
 
-      <!-- 12 欄資料表格容器 -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-xs">
-            <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold whitespace-nowrap">
-              <tr>
-                <th class="py-3 px-3">1.種類</th>
-                <th class="py-3 px-3">2.代課人姓名</th>
-                <th class="py-3 px-3">3.職稱</th>
-                <th class="py-3 px-3">4.核准文號</th>
-                <th class="py-3 px-3">5.代課日期</th>
-                <th class="py-3 px-3 text-center">6.代課節數</th>
-                <th class="py-3 px-3 text-right">7.每節鐘點費</th>
-                <th class="py-3 px-3 text-right">8.代理導師費</th>
-                <th class="py-3 px-3 text-right">9.應領金額</th>
-                <th class="py-3 px-3">10.被代課教師</th>
-                <th class="py-3 px-3">11.代課事由</th>
-                <th class="py-3 px-3">12.班級/節</th>
-                <th class="py-3 px-3 text-center">操作</th>
-              </tr>
+    <!-- ============================================================ -->
+    <!-- 模組 2：標準 12 欄公課排代與代導總冊                           -->
+    <!-- ============================================================ -->
+    <section id="module2" class="tab-content hidden space-y-4">
+      <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4">
+        <!-- 頂部操作按鈕列 -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 no-print">
+          <div>
+            <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+              <span>📑 標準 12 欄公課排代與代導總冊</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">符合雲林縣府標準格式・表頭支援即時排序・第 12 欄支援斜線格式（如：901/6、902/7）</p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="openCsvUploadModal()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition">
+              <span>📥 上傳標準 12 欄清冊 (CSV)</span>
+            </button>
+            <button onclick="downloadCsvTemplate()" class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs transition shadow-2xs">
+              📄 下載空白範本
+            </button>
+            <button onclick="openAddTaskModal()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm">
+              ➕ 手動新增 1 筆排代
+            </button>
+            <button onclick="confirmResetLocalStorage()" class="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-bold text-xs transition shadow-2xs">
+              🗑️ 清空暫存重置
+            </button>
+          </div>
+        </div>
+
+        <!-- 12 欄清冊表格 -->
+        <div class="overflow-x-auto mt-4">
+          <table class="w-full border-collapse text-left">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold whitespace-nowrap select-none">
+              <!-- JS 動態注入具備升降冪點擊排序功能的表頭 -->
             </thead>
             <tbody id="tasksTbody" class="divide-y divide-slate-100">
-              <!-- tasks.js 動態渲染清冊列 -->
+              <!-- JS 動態渲染排代紀錄 -->
             </tbody>
           </table>
-        </div>
-        <div id="tasksEmptyHint" class="hidden p-12 text-center text-slate-400 text-sm">
-          📭 目前尚無排代紀錄，請點擊上方按鈕「上傳標準 12 欄清冊 (CSV)」或手動新增排代。
+          <div id="tasksEmptyHint" class="py-12 text-center text-slate-400 text-sm hidden">
+            尚無任何代課清冊資料，請點擊上方按鈕上傳 CSV 檔案。
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- ========================================== -->
-    <!-- 模組 3：同仁自辦調代課工作流 -->
-    <!-- ========================================== -->
-    <div id="module3" class="tab-content hidden space-y-4">
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <h2 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-2">
-          <span>🔄</span> 教師自辦調課登記與單據產製
-        </h2>
-        <p class="text-xs text-slate-500 mb-6">
-          同仁因事自辦互調課堂，登記後自動同步動態課表，並可一鍵產製紙本調課申請簽核單。
-        </p>
+    <!-- ============================================================ -->
+    <!-- 模組 3：同仁自辦互調課工作流                                  -->
+    <!-- ============================================================ -->
+    <section id="module3" class="tab-content hidden space-y-4">
+      <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 mb-5">
+          <div>
+            <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+              <span>🔄 同仁自辦互調課工作流</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">免登入直接填單・送出時僅需申請人輸入個人調課密碼（預設 1234）</p>
+          </div>
+          <!-- 自行修改調課密碼按鈕 -->
+          <button onclick="promptChangeTeacherPassword()" class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:text-indigo-600 hover:border-indigo-300 text-xs font-bold transition shadow-2xs flex items-center gap-1.5">
+            <span>🔑 修改調課密碼</span>
+          </button>
+        </div>
 
-        <form id="swapForm" onsubmit="handleSwapSubmit(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <!-- 申請人 (調出方) -->
-          <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-            <h3 class="font-bold text-slate-700 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 申請調課教師 (調出)
-            </h3>
-            <div class="grid grid-cols-2 gap-3">
+        <!-- 調課登記表單 -->
+        <form id="addSwapForm" onsubmit="handleAddSwapSubmit(event)" class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6">
+          <div class="text-xs font-extrabold text-indigo-900 mb-3 flex items-center gap-1.5">
+            <span>📝 互調課申請單填寫</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- 申請同仁 (A) -->
+            <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-3">
+              <span class="text-xs font-bold text-slate-700 flex items-center gap-1">👤 申請同仁 (原授課)</span>
               <div>
-                <label class="block text-slate-600 font-semibold mb-1">教師姓名</label>
-                <select id="swapOrigTeacher" class="w-full border border-slate-300 rounded-lg p-2 font-bold text-slate-800" required></select>
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">申請教師：</label>
+                <select id="swapOrigTeacher" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-bold bg-white focus:ring-2 focus:ring-indigo-500" required></select>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-500 mb-1">原課日期 (民國)：</label>
+                  <input type="text" id="swapOrigDate" placeholder="例: 1150915" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-mono font-bold" required>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-500 mb-1">原課節次：</label>
+                  <select id="swapOrigPeriod" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-bold bg-white">
+                    <option value="1">第 1 節</option><option value="2">第 2 節</option><option value="3">第 3 節</option><option value="4">第 4 節</option>
+                    <option value="5">第 5 節</option><option value="6">第 6 節</option><option value="7">第 7 節</option><option value="8">第 8 節</option>
+                  </select>
+                </div>
               </div>
               <div>
-                <label class="block text-slate-600 font-semibold mb-1">班級/科目</label>
-                <input type="text" id="swapOrigClassSubject" placeholder="例：801 國文" class="w-full border border-slate-300 rounded-lg p-2" required>
-              </div>
-              <div>
-                <label class="block text-slate-600 font-semibold mb-1">原上課日期 (7碼民國)</label>
-                <input type="text" id="swapOrigDate" placeholder="例：1151020" class="w-full border border-slate-300 rounded-lg p-2" required>
-              </div>
-              <div>
-                <label class="block text-slate-600 font-semibold mb-1">原上課節次</label>
-                <select id="swapOrigPeriod" class="w-full border border-slate-300 rounded-lg p-2 font-semibold">
-                  <option value="1">第 1 節</option>
-                  <option value="2">第 2 節</option>
-                  <option value="3">第 3 節</option>
-                  <option value="4">第 4 節</option>
-                  <option value="5">第 5 節</option>
-                  <option value="6">第 6 節</option>
-                  <option value="7">第 7 節</option>
-                </select>
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">原課班級與科目：</label>
+                <input type="text" id="swapOrigClassSubject" placeholder="例: 701 國文" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-bold" required>
               </div>
             </div>
-          </div>
 
-          <!-- 對象人 (調入方) -->
-          <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-            <h3 class="font-bold text-slate-700 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 協同調課教師 (調入)
-            </h3>
-            <div class="grid grid-cols-2 gap-3">
+            <!-- 協同同仁 (B) -->
+            <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-3">
+              <span class="text-xs font-bold text-slate-700 flex items-center gap-1">🤝 協同調課同仁 (調移至)</span>
               <div>
-                <label class="block text-slate-600 font-semibold mb-1">教師姓名</label>
-                <select id="swapTargetTeacher" class="w-full border border-slate-300 rounded-lg p-2 font-bold text-slate-800" required></select>
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">協同教師：</label>
+                <select id="swapTargetTeacher" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-bold bg-white focus:ring-2 focus:ring-indigo-500" required></select>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-500 mb-1">調移日期 (民國)：</label>
+                  <input type="text" id="swapTargetDate" placeholder="例: 1150918" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-mono font-bold" required>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-500 mb-1">調移節次：</label>
+                  <select id="swapTargetPeriod" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-bold bg-white">
+                    <option value="1">第 1 節</option><option value="2">第 2 節</option><option value="3">第 3 節</option><option value="4">第 4 節</option>
+                    <option value="5">第 5 節</option><option value="6">第 6 節</option><option value="7">第 7 節</option><option value="8">第 8 節</option>
+                  </select>
+                </div>
               </div>
               <div>
-                <label class="block text-slate-600 font-semibold mb-1">班級/科目</label>
-                <input type="text" id="swapTargetClassSubject" placeholder="例：801 英語" class="w-full border border-slate-300 rounded-lg p-2" required>
-              </div>
-              <div>
-                <label class="block text-slate-600 font-semibold mb-1">對調後上課日期</label>
-                <input type="text" id="swapTargetDate" placeholder="例：1151022" class="w-full border border-slate-300 rounded-lg p-2" required>
-              </div>
-              <div>
-                <label class="block text-slate-600 font-semibold mb-1">對調後上課節次</label>
-                <select id="swapTargetPeriod" class="w-full border border-slate-300 rounded-lg p-2 font-semibold">
-                  <option value="1">第 1 節</option>
-                  <option value="2">第 2 節</option>
-                  <option value="3">第 3 節</option>
-                  <option value="4">第 4 節</option>
-                  <option value="5">第 5 節</option>
-                  <option value="6">第 6 節</option>
-                  <option value="7">第 7 節</option>
-                </select>
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">調移班級與科目：</label>
+                <input type="text" id="swapTargetClassSubject" placeholder="例: 801 英語" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-bold" required>
               </div>
             </div>
           </div>
 
           <!-- 調課事由與送出 -->
-          <div class="md:col-span-2 flex flex-wrap items-center justify-between gap-3 pt-2">
-            <div class="flex-1 min-w-[280px]">
-              <input type="text" id="swapReason" placeholder="請填寫調課事由 (例：公假研習前調課、校務會議調移)" class="w-full border border-slate-300 rounded-lg p-2 text-xs" required>
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200">
+            <div class="flex-1 min-w-[240px]">
+              <input type="text" id="swapReason" placeholder="請填寫互調課事由 (例: 因公差排代需要互相調移時段)..." class="w-full px-3 py-1.5 rounded-md border border-slate-300 text-xs font-medium" required>
             </div>
-            <button type="submit" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-sm transition">
-              ➕ 登記調課並寫入紀錄
+            <button type="submit" class="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+              🔒 送出調課申請 (需輸入調課密碼)
             </button>
           </div>
         </form>
-      </div>
 
-      <!-- 調課紀錄總表 -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="p-4 bg-slate-50 border-b border-slate-200 font-bold text-slate-700 text-xs">
-          📋 115-1 學期教師自辦互調課紀錄
-        </div>
+        <!-- 調課紀錄總覽 -->
         <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+          <table class="w-full border-collapse text-left">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold whitespace-nowrap text-xs">
               <tr>
-                <th class="py-2.5 px-3">登記序號</th>
-                <th class="py-2.5 px-3">申請教師 (調出)</th>
-                <th class="py-2.5 px-3">原節次時段</th>
-                <th class="py-2.5 px-3">協同教師 (調入)</th>
-                <th class="py-2.5 px-3">對調後時段</th>
+                <th class="py-2.5 px-3">申請教師</th>
+                <th class="py-2.5 px-3">原日期與節次</th>
+                <th class="py-2.5 px-3">原課班級科目</th>
+                <th class="py-2.5 px-3 text-center">方向</th>
+                <th class="py-2.5 px-3">協同教師</th>
+                <th class="py-2.5 px-3">調移日期與節次</th>
+                <th class="py-2.5 px-3">調移班級科目</th>
                 <th class="py-2.5 px-3">調課事由</th>
-                <th class="py-2.5 px-3 text-center">單據操作</th>
+                <th class="py-2.5 px-3 text-center">操作</th>
               </tr>
             </thead>
             <tbody id="swapsTbody" class="divide-y divide-slate-100">
-              <!-- swaps.js 動態載入調課紀錄 -->
+              <!-- JS 動態填入調課清單 -->
             </tbody>
           </table>
-        </div>
-        <div id="swapsEmptyHint" class="p-8 text-center text-slate-400 text-xs">
-          目前尚無同仁互調課登記。
+          <div id="swapsEmptyHint" class="py-10 text-center text-slate-400 text-sm hidden">
+            本學期尚無自辦調課紀錄。
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- ========================================== -->
-    <!-- 模組 4：排代作業台 (全校空堂與衝堂檢核 Excel 矩陣) -->
-    <!-- ========================================== -->
-    <div id="module4" class="tab-content hidden space-y-4">
-      <!-- 頂部作業列：提醒設定、晨報速發、星期切換與人力池 -->
-      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-              <span>⚡</span> 課務組長排代作業台 (全校作息與空堂矩陣)
-            </h2>
-            <p id="matrixTargetDateTitle" class="text-xs text-indigo-700 font-bold mt-0.5">
-              載入中...
-            </p>
+    <!-- ============================================================ -->
+    <!-- 模組 4：智慧排代與作業矩陣                                    -->
+    <!-- ============================================================ -->
+    <section id="module4" class="tab-content hidden space-y-4">
+      <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-5">
+        <div class="pb-3 border-b border-slate-100 mb-4">
+          <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+            <span>🎯 智慧排代與空堂作業矩陣</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">教務處防衝堂排代推薦・即時對照全校 13 位教師空堂狀態</p>
+        </div>
+        <div id="matrixContainer" class="overflow-x-auto">
+          <!-- JS 動態生成空堂推薦矩陣 -->
+          <div class="p-8 text-center text-slate-400 text-sm">
+            請點選班級或日期以檢視智慧媒合防衝堂矩陣。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 模組 5：月結公文核銷中心                                      -->
+    <!-- ============================================================ -->
+    <section id="module5" class="tab-content hidden space-y-4">
+      <!-- 頂部自訂起訖日期與快捷工具列 -->
+      <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3 no-print">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-bold text-slate-700 flex items-center gap-1">📅 自訂結算區間：</span>
+          <input type="text" id="reportStartDateInput" value="1150831" class="w-24 px-2 py-1 text-xs font-mono font-bold border border-slate-300 rounded-md text-center focus:ring-2 focus:ring-indigo-500" placeholder="1150831">
+          <span class="text-xs text-slate-400 font-bold">至</span>
+          <input type="text" id="reportEndDateInput" value="1150930" class="w-24 px-2 py-1 text-xs font-mono font-bold border border-slate-300 rounded-md text-center focus:ring-2 focus:ring-indigo-500" placeholder="1150930">
+          <button onclick="onCustomReportDateChange()" class="px-3 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 transition shadow-2xs">
+            重新結算
+          </button>
+        </div>
+        <!-- 月份快捷切換鈕 -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-xs text-slate-400 font-semibold mr-1">快捷切換：</span>
+          <button onclick="setReportDateRange('1150831', '1150930')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-md text-xs font-bold transition">8~9月</button>
+          <button onclick="setReportDateRange('1151001', '1151031')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-md text-xs font-bold transition">10月</button>
+          <button onclick="setReportDateRange('1151101', '1151130')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-md text-xs font-bold transition">11月</button>
+          <button onclick="setReportDateRange('1151201', '1151231')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-md text-xs font-bold transition">12月</button>
+          <button onclick="setReportDateRange('1160101', '1160131')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-md text-xs font-bold transition">1月</button>
+          <button onclick="setReportDateRange('1150831', '1160131')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md text-xs font-bold transition">全學期</button>
+        </div>
+      </div>
+
+      <!-- 子報表分頁切換列 -->
+      <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 no-print">
+          <div class="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs flex-wrap">
+            <button id="subtab-5-1" onclick="switchModule5SubTab('5-1')" class="subtab-btn px-3 py-1.5 rounded-md bg-white shadow-xs text-indigo-700 font-bold transition">5-1 公假代課鐘點費</button>
+            <button id="subtab-5-2" onclick="switchModule5SubTab('5-2')" class="subtab-btn px-3 py-1.5 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold">5-2 兼課超鐘點印領</button>
+            <button id="subtab-5-3" onclick="switchModule5SubTab('5-3')" class="subtab-btn px-3 py-1.5 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold">5-3 身心調適假專案</button>
+            <button id="subtab-5-4" onclick="switchModule5SubTab('5-4')" class="subtab-btn px-3 py-1.5 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold">5-4 第8節課輔與事病假</button>
           </div>
 
-          <div class="flex items-center gap-2 flex-wrap">
-            <!-- 自訂提醒分鐘數下拉選單 -->
-            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs">
-              <span class="text-slate-600 font-semibold">🔔 課前提醒：</span>
-              <select id="reminderMinutesSelect" onchange="updateReminderSetting(this.value)" class="bg-transparent font-bold text-indigo-700 outline-none">
-                <option value="5">課前 5 分鐘</option>
-                <option value="10">課前 10 分鐘</option>
-                <option value="15" selected>課前 15 分鐘</option>
-                <option value="20">課前 20 分鐘</option>
-                <option value="30">課前 30 分鐘</option>
-                <option value="0">不提醒</option>
-              </select>
+          <div class="flex items-center gap-3">
+            <!-- 5-2 兼課專用週數微調控制器 -->
+            <div id="module52Controls" class="hidden flex items-center gap-1.5 text-xs bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md text-amber-900 font-bold">
+              <span>授課週數：</span>
+              <button onclick="adjustMonthlyWeeks(-1)" class="w-5 h-5 rounded bg-white border border-amber-300 hover:bg-amber-100 flex items-center justify-center font-bold">－</button>
+              <span id="monthlyWeeksDisplay" class="font-mono text-sm px-1">4</span>
+              <span>週</span>
+              <button onclick="adjustMonthlyWeeks(1)" class="w-5 h-5 rounded bg-white border border-amber-300 hover:bg-amber-100 flex items-center justify-center font-bold">＋</button>
             </div>
-
-            <!-- 08:00 晨報速發按鈕 -->
-            <button onclick="openMorningDigestModal()" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition flex items-center gap-1.5">
-              <span>🌅</span> 當日 08:00 代課晨報速發
+            <!-- 列印公文按鈕 -->
+            <button onclick="window.print()" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-1">
+              🖨️ 列印公文清冊
             </button>
           </div>
         </div>
 
-        <!-- 星期切換列與即時人力池統計 -->
-        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
-          <div class="flex items-center gap-2" id="matrixDaySelector">
-            <!-- matrix.js 動態注入週一至週五切換鈕 -->
-          </div>
-          <div id="matrixStatPool">
-            <!-- matrix.js 動態注入人力池統計 -->
-          </div>
+        <!-- 官方公文列印清冊抬頭 -->
+        <div class="py-4 text-center">
+          <h2 class="text-xl font-black text-slate-900 tracking-wide">雲林縣立飛沙國民中學</h2>
+          <h3 id="reportSubTitle" class="text-base font-extrabold text-slate-800 mt-1">115學年度第1學期 教師公差假課務派代印領清冊</h3>
+          <p id="reportMonthPeriod" class="text-xs text-slate-500 font-mono mt-1 font-semibold">結算期間：中華民國 115 年 08 月 31 日 至 115 年 09 月 30 日</p>
         </div>
-      </div>
 
-      <!-- 全校 13 位教師空堂/忙碌排代矩陣主表格 -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <!-- 報表 Table -->
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-xs">
-            <thead id="matrixThead">
-              <!-- matrix.js 動態注入節次表頭 -->
+          <table class="w-full border-collapse text-xs border border-slate-300">
+            <thead id="reportThead" class="bg-slate-100 text-slate-700 font-bold select-none">
+              <!-- JS 動態生成表頭 -->
             </thead>
-            <tbody id="matrixTbody" class="divide-y divide-slate-100">
-              <!-- matrix.js 動態注入教師作息矩陣 -->
+            <tbody id="reportTbody" class="divide-y divide-slate-200">
+              <!-- JS 動態填入結算資料 -->
             </tbody>
-          </table>
-        </div>
-        <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-[11px] text-slate-500">
-          <div class="flex items-center gap-3">
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-100 border border-emerald-300"></span> 綠虛線：空堂 (點擊可立即指派代課)</span>
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-100 border border-slate-200"></span> 灰色：常態授課中</span>
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-rose-100 border border-rose-300"></span> 紅色：公差請假待代</span>
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-200 border border-emerald-400"></span> 深綠：已支援代課</span>
-          </div>
-          <div>🛡️ 內建 4 重智慧防衝堂檢核攔截系統</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- 模組 5：月結公文核銷中心 -->
-    <!-- ========================================== -->
-    <div id="module5" class="tab-content hidden space-y-4">
-      <!-- 子分頁切換列 -->
-      <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3 no-print">
-        <div class="inline-flex p-1 bg-slate-100 rounded-lg text-xs font-bold">
-          <button onclick="switchModule5SubTab('5-1')" id="subtab-5-1" class="subtab-btn px-3 py-1.5 rounded-md bg-white shadow text-indigo-700 transition">5-1 公假代課總冊</button>
-          <button onclick="switchModule5SubTab('5-2')" id="subtab-5-2" class="subtab-btn px-3 py-1.5 rounded-md text-slate-500 hover:text-slate-800 transition">5-2 兼課超鐘點月結扣除</button>
-          <button onclick="switchModule5SubTab('5-3')" id="subtab-5-3" class="subtab-btn px-3 py-1.5 rounded-md text-slate-500 hover:text-slate-800 transition">5-3 身心調適假專案</button>
-          <button onclick="switchModule5SubTab('5-4')" id="subtab-5-4" class="subtab-btn px-3 py-1.5 rounded-md text-slate-500 hover:text-slate-800 transition">5-4 第8節課輔與事病假自費</button>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="window.print()" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition flex items-center gap-1.5">
-            <span>🖨️</span> 列印本頁核銷公文
-          </button>
-        </div>
-      </div>
-
-      <!-- 模組 5-2 專屬：當月結算週數微調器 (切換到 5-2 時自動顯示) -->
-      <div id="module52Controls" class="hidden bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs no-print">
-        <div class="text-slate-600 font-medium">
-          📌 兼課核銷依當月教學週數計算應授節數，並自動扣除因公差或請假缺授之節次。
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-slate-700">本月結算週數：</span>
-          <button onclick="adjustMonthlyWeeks(-1)" class="w-7 h-7 rounded bg-white border border-slate-300 hover:bg-slate-100 font-bold text-slate-700 shadow-sm flex items-center justify-center">－</button>
-          <span id="monthlyWeeksDisplay" class="w-8 text-center font-bold text-indigo-700 text-base font-mono">4</span>
-          <span class="text-slate-500 font-bold">週</span>
-          <button onclick="adjustMonthlyWeeks(1)" class="w-7 h-7 rounded bg-white border border-slate-300 hover:bg-slate-100 font-bold text-slate-700 shadow-sm flex items-center justify-center">＋</button>
-        </div>
-      </div>
-
-      <!-- 月結報表列印與預覽主體 -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8" id="printArea">
-        <!-- 公文表頭 -->
-        <div class="text-center mb-6">
-          <h1 class="text-xl font-bold tracking-wider text-slate-900" id="reportSchoolTitle">雲林縣立飛沙國民中學</h1>
-          <h2 class="text-base font-bold text-slate-800 mt-1" id="reportSubTitle">115學年度第1學期 教師公差假課務派代印領清冊</h2>
-          <div class="flex justify-between items-center text-xs text-slate-500 mt-3 border-b border-slate-200 pb-2">
-            <span id="reportMonthPeriod">結算月份：115年10月份</span>
-            <span id="reportUnitTitle">編製單位：教務處課務組</span>
-            <span>幣別：新臺幣 (元)</span>
-          </div>
-        </div>
-
-        <!-- 報表主表格 -->
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs border border-slate-300 border-collapse">
-            <thead id="reportThead" class="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold text-center">
-              <!-- reports.js 動態切換表頭 -->
-            </thead>
-            <tbody id="reportTbody" class="divide-y divide-slate-200 text-slate-800">
-              <!-- reports.js 動態產製內容 -->
-            </tbody>
-            <tfoot id="reportTfoot" class="bg-slate-50 border-t border-slate-300 font-bold">
-              <!-- reports.js 動態產製合計與大寫 -->
+            <tfoot id="reportTfoot" class="bg-slate-50 border-t-2 border-slate-300">
+              <!-- JS 動態填入總計大寫金額 -->
             </tfoot>
           </table>
         </div>
 
-        <!-- 核章簽署欄 -->
-        <div class="grid grid-cols-4 gap-4 mt-12 pt-6 border-t border-slate-300 text-center text-xs text-slate-800 font-semibold">
-          <div class="space-y-8">
-            <div>承辦人 (課務組長)</div>
-            <div class="text-slate-400">施銘權</div>
-          </div>
-          <div class="space-y-8">
-            <div>教務主任</div>
-            <div class="text-slate-400">(簽章)</div>
-          </div>
-          <div class="space-y-8">
-            <div>主計主任</div>
-            <div class="text-slate-400">(簽章)</div>
-          </div>
-          <div class="space-y-8">
-            <div>校長</div>
-            <div class="text-slate-400">(簽章)</div>
-          </div>
+        <!-- 公文簽核章欄位 (列印時可手寫或簽章) -->
+        <div class="mt-8 pt-4 border-t border-slate-200 grid grid-cols-4 gap-4 text-center text-xs font-bold text-slate-700">
+          <div class="py-6 border-b border-dashed border-slate-300">承辦人 (業務填報)</div>
+          <div class="py-6 border-b border-dashed border-slate-300">教務組長</div>
+          <div class="py-6 border-b border-dashed border-slate-300">主計 / 會計主任</div>
+          <div class="py-6 border-b border-dashed border-slate-300">校長</div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- ========================================== -->
-    <!-- 模組 6：名冊與系統設定 -->
-    <!-- ========================================== -->
-    <div id="module6" class="tab-content hidden space-y-4">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- 全校教師編制名冊 -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-3">
-            <span>👥</span> 全校 13 位教師兼課鐘點編制表
+    <!-- ============================================================ -->
+    <!-- 模組 6：名冊與系統設定                                        -->
+    <!-- ============================================================ -->
+    <section id="module6" class="tab-content hidden space-y-6">
+      <!-- Google Apps Script 雲端同步設定卡片 -->
+      <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-5">
+        <div class="pb-3 border-b border-slate-100 mb-4">
+          <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+            <span>⚙️ 雲端同步與 Google Apps Script API 串接</span>
           </h2>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
-                <tr>
-                  <th class="py-2 px-3">教師姓名</th>
-                  <th class="py-2 px-3">職稱</th>
-                  <th class="py-2 px-3 text-center">基本節數</th>
-                  <th class="py-2 px-3 text-center">兼課超額</th>
-                  <th class="py-2 px-3">固定兼課節次時段</th>
-                </tr>
-              </thead>
-              <tbody id="rosterTbody" class="divide-y divide-slate-100">
-                <!-- app.js 動態注入名冊 -->
-              </tbody>
-            </table>
-          </div>
+          <p class="text-xs text-slate-500 mt-0.5">串接 Google 試算表與 Google 共同日曆之 Web App URL</p>
         </div>
 
-        <!-- 系統雲端 API 與日曆綁定設定 -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-            <span>⚙️</span> 雲端試算表與 Google 日曆連動參數
-          </h2>
-          <div class="space-y-3 text-xs">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Google Apps Script Web App 網址 (以 /exec 結尾)：</label>
+            <input type="text" id="settingApiUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono font-medium focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-slate-600 font-semibold mb-1">Google Apps Script Web App API 網址 (結尾為 /exec)</label>
-              <input type="text" id="settingApiUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full border border-slate-300 rounded-lg p-2 font-mono">
+              <label class="block text-xs font-bold text-slate-700 mb-1">共同日曆課前彈出提醒時間：</label>
+              <select id="reminderMinutesSelect" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold bg-white">
+                <option value="10">課前 10 分鐘</option>
+                <option value="15" selected>課前 15 分鐘</option>
+                <option value="30">課前 30 分鐘</option>
+              </select>
             </div>
-            <div>
-              <label class="block text-slate-600 font-semibold mb-1">Google 共同行事曆 ID</label>
-              <input type="text" id="settingCalendarId" value="c_9f7d9e917c79ee2de6f54ed275f97d9bfdb493ba457a0135b69438213e217ba6@group.calendar.google.com" class="w-full border border-slate-300 rounded-lg p-2 font-mono" readonly>
-              <p class="text-[11px] text-slate-400 mt-1">此日曆 ID 已固化於後端腳本中，排代與銷假全自動同步。</p>
-            </div>
-            <div class="pt-2 flex items-center gap-2">
-              <button onclick="saveCloudSettings()" class="admin-only px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm">
-                💾 儲存並測試連線
-              </button>
-              <button onclick="pullFromCloud()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg border border-slate-300 transition">
-                📥 從試算表拉取最新資料
+            <div class="flex items-end">
+              <button onclick="saveCloudSettings()" class="w-full py-2 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+                💾 儲存並套用設定
               </button>
             </div>
           </div>
+
+          <!-- 雲端操作按鈕 -->
+          <div class="pt-4 border-t border-slate-100 flex flex-wrap items-center gap-3">
+            <button onclick="pullFromCloud()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5">
+              <span>📥 從試算表拉取最新資料 (含課表與編制)</span>
+            </button>
+            <button onclick="pushToCloud()" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5">
+              <span>📤 推送本機排代與調課至試算表與日曆</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      <!-- 13 位教師編制名冊與密碼管理 -->
+      <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-5">
+        <div class="pb-3 border-b border-slate-100 mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+              <span>👥 全校 13 位教師編制名冊與密碼管理</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">預設調課密碼為 1234・解鎖組長權限後可一鍵復原同仁密碼</p>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-left">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-xs whitespace-nowrap">
+              <tr>
+                <th class="py-2.5 px-3">教師姓名</th>
+                <th class="py-2.5 px-3">職稱</th>
+                <th class="py-2.5 px-3 text-center">基本授課</th>
+                <th class="py-2.5 px-3 text-center">兼課超額</th>
+                <th class="py-2.5 px-3">固定兼課時段</th>
+                <th class="py-2.5 px-3 text-center">密碼重設 (組長權限)</th>
+              </tr>
+            </thead>
+            <tbody id="rosterTbody" class="divide-y divide-slate-100">
+              <!-- JS 動態填入 13 位教師名冊與重設按鈕 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
   </main>
 
-  <!-- ========================================== -->
-  <!-- 彈出視窗：上傳標準 12 欄 CSV 視窗 -->
-  <!-- ========================================== -->
-  <div id="csvUploadModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4 border border-slate-200">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-          <span>📥</span> 匯入標準 12 欄排代清冊 (CSV)
+  <!-- ==================== 頁尾版權宣告 ==================== -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 no-print">
+    雲林縣立飛沙國民中學 115學年度第1學期 課務管理系統 ｜ 採用單一離線 Web 應用架構
+  </footer>
+
+  <!-- ============================================================ -->
+  <!-- 彈出視窗 1：CSV 清冊上傳檢核視窗                               -->
+  <!-- ============================================================ -->
+  <div id="csvUploadModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden no-print">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+          <span>📥 上傳標準 12 欄公差代課清冊 (CSV)</span>
         </h3>
-        <button onclick="closeCsvUploadModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold leading-none">&times;</button>
+        <button onclick="closeCsvUploadModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
       </div>
 
       <div class="space-y-3 text-xs text-slate-600">
-        <p>請選擇由 Excel 另存為之 <strong>.csv</strong> 檔案：</p>
-        <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('csvFileInput').click()">
-          <span class="text-3xl block mb-2">📁</span>
-          <span class="font-bold text-indigo-600">點此選取 CSV 檔案</span>
-          <span class="block text-[11px] text-slate-400 mt-1">支援 Excel 標題列換行防呆與 901/6 格式</span>
-          <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleCsvFileSelected(event)">
+        <p class="leading-relaxed">
+          支援符合縣府標準之 12 欄代課清冊（RFC 4180 標準）。第 5 欄代課日期不論輸入 <code class="bg-slate-100 px-1 py-0.5 rounded font-bold text-indigo-700">1150901</code>、<code class="bg-slate-100 px-1 py-0.5 rounded font-bold text-indigo-700">115/9/1</code>，系統皆會自動補零校正並推播至日曆。
+        </p>
+
+        <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 hover:bg-slate-100 transition cursor-pointer" onclick="document.getElementById('csvFileInput').click()">
+          <input type="file" id="csvFileInput" accept=".csv" onchange="handleCsvFileSelected(event)" class="hidden">
+          <div class="text-3xl mb-2">📄</div>
+          <span class="text-xs font-bold text-indigo-600">點此選取本機 CSV 檔案</span>
+          <p id="csvFileInfo" class="text-[11px] text-slate-400 mt-1 hidden"></p>
         </div>
-        <div id="csvFileInfo" class="hidden p-2 rounded bg-indigo-50 text-indigo-700 font-semibold text-[11px]"></div>
       </div>
 
-      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-        <button onclick="closeCsvUploadModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">取消</button>
-        <button onclick="processCsvUpload()" id="startUploadBtn" class="px-4 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" disabled>確認匯入並解析</button>
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+        <button onclick="closeCsvUploadModal()" class="px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+          取消
+        </button>
+        <button id="startUploadBtn" onclick="processCsvUpload()" disabled class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs shadow-sm transition">
+          確認解析並匯入
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- 彈出視窗：手動新增排代視窗 -->
-  <!-- ========================================== -->
-  <div id="addTaskModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-    <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 space-y-4 border border-slate-200">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-          <span>➕</span> 手動新增 1 筆公課排代
-        </h3>
-        <button onclick="closeAddTaskModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold leading-none">&times;</button>
+  <!-- ============================================================ -->
+  <!-- 彈出視窗 2：手動新增排代紀錄                                  -->
+  <!-- ============================================================ -->
+  <div id="addTaskModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden no-print">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-black text-slate-900">➕ 手動新增 1 筆排代</h3>
+        <button onclick="closeAddTaskModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
       </div>
 
-      <form id="addTaskForm" onsubmit="handleAddTaskSubmit(event)" class="grid grid-cols-2 gap-3 text-xs">
-        <div>
-          <label class="block text-slate-600 font-semibold mb-1">1. 假別種類</label>
-          <select id="modalTaskType" class="w-full border border-slate-300 rounded-lg p-2 font-semibold">
-            <option value="公假">公假 (公費派代)</option>
-            <option value="公(研習)">公(研習)</option>
-            <option value="身心調適假">身心調適假</option>
-            <option value="事假">事假 (自費)</option>
-            <option value="病假">病假 (自費)</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-slate-600 font-semibold mb-1">2. 代課教師姓名</label>
-          <select id="modalSubTeacher" class="w-full border border-slate-300 rounded-lg p-2 font-bold text-slate-800" required></select>
-        </div>
-        <div>
-          <label class="block text-slate-600 font-semibold mb-1">3. 職稱</label>
-          <input type="text" id="modalSubTitle" value="專任教師" class="w-full border border-slate-300 rounded-lg p-2" required>
-        </div>
-        <div>
-          <label class="block text-slate-600 font-semibold mb-1">4. 核准文號 (7碼民國/公文)</label>
-          <input type="text" id="modalDocNo" placeholder="例：1151001" class="w-full border border-slate-300 rounded-lg p-2" required>
-        </div>
-        <div>
-          <label class="block text-slate-600 font-semibold mb-1">5. 代課日期 (7碼民國)</label>
-          <input type="text" id="modalDate" placeholder="例：1151021" class="w-full border border-slate-300 rounded-lg p-2" required>
-        </div>
-        <div>
-          <label class="block text-slate-600 font-semibold mb-1">6. 代理導師費 (全日帶班填493/半日246)</label>
-          <input type="number" id="modalHomeFee" value="0" class="w-full border border-slate-300 rounded-lg p-2 font-semibold">
-        </div>
-        <div>
-          <label class="block text-slate-600 font-semibold mb-1">10. 被代課教師</label>
-          <select id="modalOrigTeacher" class="w-full border border-slate-300 rounded-lg p-2 font-bold text-slate-800" required></select>
-        </div>
-        <div>
-          <label class="block text-slate-600 font-semibold mb-1">12. 班級/節 (支援 901/6 等)</label>
-          <input type="text" id="modalClassPeriod" placeholder="例：901/6 或 801 第2節" class="w-full border border-slate-300 rounded-lg p-2 font-bold" required>
-        </div>
-        <div class="col-span-2">
-          <label class="block text-slate-600 font-semibold mb-1">11. 代課事由</label>
-          <input type="text" id="modalReason" placeholder="例：教育輔導團藝術領域分團辦理研習實施計畫" class="w-full border border-slate-300 rounded-lg p-2" required>
+      <form id="addTaskForm" onsubmit="handleAddTaskSubmit(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">假別種類：</label>
+            <select id="modalTaskType" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 font-bold">
+              <option value="公假">公假 (公差排代)</option>
+              <option value="身心調適假">身心調適假 (專案)</option>
+              <option value="事假">事假 (自費代扣)</option>
+              <option value="病假">病假 (自費代扣)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">代課教師姓名：</label>
+            <select id="modalSubTeacher" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 font-bold" required></select>
+          </div>
         </div>
 
-        <div class="col-span-2 flex justify-end gap-2 pt-3 border-t border-slate-100">
-          <button type="button" onclick="closeAddTaskModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">取消</button>
-          <button type="submit" class="px-5 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">確認加入排代並同步</button>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">代課人職稱：</label>
+            <input type="text" id="modalSubTitle" value="專任教師" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 font-medium">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">代課日期 (民國)：</label>
+            <input type="text" id="modalDate" placeholder="例: 1150915" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 font-mono font-bold" required>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">被代課教師：</label>
+            <select id="modalOrigTeacher" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 font-bold" required></select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">班級/節 (支援斜線)：</label>
+            <input type="text" id="modalClassPeriod" placeholder="例: 801/5 或 701 第3節" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 font-bold" required>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">核准文號：</label>
+            <input type="text" id="modalDocNo" placeholder="例: 1150901" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 font-mono">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">代理導師費：</label>
+            <input type="number" id="modalHomeFee" value="0" min="0" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 font-mono font-bold">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">代課事由：</label>
+          <input type="text" id="modalReason" placeholder="例: 公差出席全縣數學科教師增能研習" class="w-full px-2.5 py-1.5 rounded-md border border-slate-300 font-medium" required>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeAddTaskModal()" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition">
+            取消
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+            確認新增排代
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- 彈出視窗：晨報 08:00 速發視窗 -->
-  <!-- ========================================== -->
-  <div id="morningDigestModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4 border border-slate-200">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-          <span>🌅</span> 飛沙國中 課務晨報 (早晨 08:00 速發)
-        </h3>
-        <button onclick="closeMorningDigestModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold leading-none">&times;</button>
-      </div>
-
-      <div class="space-y-3 text-xs">
-        <div class="flex items-center gap-2">
-          <span class="font-semibold text-slate-600">檢視日期：</span>
-          <input type="text" id="digestDateInput" class="border border-slate-300 rounded-lg px-2 py-1 font-bold text-indigo-700 w-28" onchange="generateMorningDigestText()">
-          <button onclick="setDigestDateToday()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-semibold">今日</button>
-        </div>
-        <textarea id="digestTextContent" rows="10" class="w-full border border-slate-300 rounded-xl p-3 font-mono text-xs text-slate-800 bg-slate-50 focus:bg-white" readonly></textarea>
-      </div>
-
-      <div class="flex justify-between items-center pt-2 border-t border-slate-100">
-        <span class="text-[11px] text-slate-400">點擊複製後可直接至 LINE 貼上</span>
-        <div class="flex gap-2">
-          <button onclick="copyDigestText()" class="px-4 py-2 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">📋 複製內容</button>
-          <button onclick="shareDigestToLine()" class="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5">
-            <span>💬</span> 呼叫 LINE 發送
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========================================== -->
-  <!-- 依序載入模組化 JavaScript 檔案 (依相依性載入) -->
-  <!-- ========================================== -->
-  <!-- 1. 全校 158 堂靜態課表與教師編制資料 -->
+  <!-- ==================== 模組 JS 檔案依序載入 ==================== -->
   <script src="js/data.js"></script>
-
-  <!-- 2. 身分驗證、權限管控與自訂 Toast/對話框模組 -->
-  <script src="js/auth.js"></script>
-
-  <!-- 3. 全域狀態管理與主控生命週期 -->
-  <script src="js/app.js"></script>
-
-  <!-- 4. 各功能子模組 -->
+  <script src="js/cloud.js"></script>
   <script src="js/schedule.js"></script>
   <script src="js/tasks.js"></script>
   <script src="js/swaps.js"></script>
-  <script src="js/morning.js"></script>
-  <script src="js/matrix.js"></script>
   <script src="js/reports.js"></script>
-  <script src="js/cloud.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
