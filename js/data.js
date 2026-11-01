@@ -1,8 +1,8 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
- * 課務排代、調課與月結管理系統 - 核心資料與官方底冊常數 (js/data.js)
+ * 課務排代、調課與月結管理系統 - 官方常數底冊 (js/data.js)
  * 正名：林㞽鋌 老師 (902導師)
- * 升級：納入早自習 (07:30 ~ 08:15) 與特教抽離課程
+ * 升級：納入第 0 節早自習 (07:30 ~ 08:15)
  */
 
 window.FEISHA_CONFIG_CONSTANTS = {
@@ -13,7 +13,6 @@ window.FEISHA_CONFIG_CONSTANTS = {
   defaultCalendarId: 'c_9f7d9e917c79ee2de6f54ed275f97d9bfdb493ba457a0135b69438213e217ba6@group.calendar.google.com'
 };
 
-// 班級常任導師對照表
 window.FEISHA_HOMEROOM_MAP = {
   '701': '阮建安',
   '801': '蔡明振',
@@ -21,7 +20,6 @@ window.FEISHA_HOMEROOM_MAP = {
   '902': '林㞽鋌'
 };
 
-// 全校作息時間表 (第 0 節早自習 07:30~08:15 起算)
 window.FEISHA_PERIODS = [
   { period: 0, name: '早自習', startTime: '07:30', endTime: '08:15' },
   { period: 1, name: '第一節', startTime: '08:20', endTime: '09:05' },
@@ -34,7 +32,6 @@ window.FEISHA_PERIODS = [
   { period: 8, name: '第八節', startTime: '16:00', endTime: '16:45' }
 ];
 
-// 全校 13 位教師編制清冊 (林㞽鋌老師、調課密碼預設 1234)
 window.TEACHER_ROSTER = {
   '阮建安': { title: '701導師', subject: '國文/數學', baseHours: 16, overloadHours: 3, overloadPeriods: ['1-5', '2-1', '3-1'], password: '1234' },
   '吳靜瑜': { title: '專任教師', subject: '英語', baseHours: 18, overloadHours: 2, overloadPeriods: ['1-8', '3-8'], password: '1234' },
@@ -51,193 +48,73 @@ window.TEACHER_ROSTER = {
   '鄭宇涵': { title: '資源班導師', subject: '特教', baseHours: 16, overloadHours: 0, overloadPeriods: [], password: '1234' }
 };
 
-// 官方核定 178 節基準課表矩陣 (完整 178 堂，無教室欄位，含特教抽離)
-window.BASELINE_SCHEDULE_MATRIX = [
-  // ── 701 班 (40 節) ──
-  { classId: '701', day: 1, period: 1, subject: '國文', teacher: '阮建安', isOvertime: false },
-  { classId: '701', day: 1, period: 2, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '701', day: 1, period: 3, subject: '童軍', teacher: '陳文鈴', isOvertime: false },
-  { classId: '701', day: 1, period: 4, subject: '自然', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '701', day: 1, period: 5, subject: '社會', teacher: '阮建安', isOvertime: true },
-  { classId: '701', day: 1, period: 6, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '701', day: 1, period: 7, subject: '健康', teacher: '施銘權', isOvertime: true },
-  { classId: '701', day: 1, period: 8, subject: '數學_輔', teacher: '施銘權', isOvertime: false },
-  { classId: '701', day: 2, period: 1, subject: '社會', teacher: '阮建安', isOvertime: true },
-  { classId: '701', day: 2, period: 2, subject: '體育', teacher: '林秋霞', isOvertime: true },
-  { classId: '701', day: 2, period: 3, subject: '生活科技', teacher: '吳俊德', isOvertime: false },
-  { classId: '701', day: 2, period: 4, subject: '資訊科技', teacher: '林㞽鋌', isOvertime: true },
-  { classId: '701', day: 2, period: 5, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '701', day: 2, period: 6, subject: '數學', teacher: '施銘權', isOvertime: false },
-  { classId: '701', day: 2, period: 7, subject: '國文', teacher: '阮建安', isOvertime: false },
-  { classId: '701', day: 2, period: 8, subject: '國文_輔', teacher: '阮建安', isOvertime: false },
-  { classId: '701', day: 3, period: 1, subject: '社會', teacher: '阮建安', isOvertime: true },
-  { classId: '701', day: 3, period: 2, subject: '國文', teacher: '阮建安', isOvertime: false },
-  { classId: '701', day: 3, period: 3, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '701', day: 3, period: 4, subject: '飛海沙', teacher: '林㞽鋌', isOvertime: true },
-  { classId: '701', day: 3, period: 5, subject: '輔導', teacher: '陳文鈴', isOvertime: false },
-  { classId: '701', day: 3, period: 6, subject: '數學', teacher: '施銘權', isOvertime: false },
-  { classId: '701', day: 3, period: 7, subject: '藝起繪英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '701', day: 3, period: 8, subject: '自然_輔', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '701', day: 4, period: 1, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '701', day: 4, period: 2, subject: '體育', teacher: '林秋霞', isOvertime: false },
-  { classId: '701', day: 4, period: 3, subject: '國文', teacher: '阮建安', isOvertime: false },
-  { classId: '701', day: 4, period: 4, subject: '數學', teacher: '施銘權', isOvertime: false },
-  { classId: '701', day: 4, period: 5, subject: '家政', teacher: '陳文鈴', isOvertime: false },
-  { classId: '701', day: 4, period: 6, subject: '自然', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '701', day: 4, period: 7, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '701', day: 4, period: 8, subject: '社會_輔', teacher: '阮建安', isOvertime: false },
-  { classId: '701', day: 5, period: 1, subject: '數學', teacher: '施銘權', isOvertime: false },
-  { classId: '701', day: 5, period: 2, subject: '國文', teacher: '阮建安', isOvertime: false },
-  { classId: '701', day: 5, period: 3, subject: '自然', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '701', day: 5, period: 4, subject: '閩南語', teacher: '張碧菁', isOvertime: true },
-  { classId: '701', day: 5, period: 5, subject: '飛中藝人', teacher: '陳文鈴', isOvertime: false },
-  { classId: '701', day: 5, period: 6, subject: '飛中藝人', teacher: '陳文鈴', isOvertime: false },
-  { classId: '701', day: 5, period: 7, subject: '飛中好品', teacher: '阮建安', isOvertime: false },
-  { classId: '701', day: 5, period: 8, subject: '英語_輔', teacher: '吳靜瑜', isOvertime: false },
+// 官方 178 堂基準課表 (緊湊格式：[班級, 星期, 節次, 科目, 教師, 是否兼課])
+const RAW_BASELINE_DATA = [
+  // 701 (40節)
+  ['701',1,1,'國文','阮建安',0],['701',1,2,'英語','吳靜瑜',0],['701',1,3,'童軍','陳文鈴',0],['701',1,4,'自然','林㞽鋌',0],
+  ['701',1,5,'社會','阮建安',1],['701',1,6,'藝術','蔡芷儀',0],['701',1,7,'健康','施銘權',1],['701',1,8,'數學_輔','施銘權',0],
+  ['701',2,1,'社會','阮建安',1],['701',2,2,'體育','林秋霞',1],['701',2,3,'生活科技','吳俊德',0],['701',2,4,'資訊科技','林㞽鋌',1],
+  ['701',2,5,'英語','吳靜瑜',0],['701',2,6,'數學','施銘權',0],['701',2,7,'國文','阮建安',0],['701',2,8,'國文_輔','阮建安',0],
+  ['701',3,1,'社會','阮建安',1],['701',3,2,'國文','阮建安',0],['701',3,3,'藝術','蔡芷儀',0],['701',3,4,'飛海沙','林㞽鋌',1],
+  ['701',3,5,'輔導','陳文鈴',0],['701',3,6,'數學','施銘權',0],['701',3,7,'藝起繪英語','吳靜瑜',0],['701',3,8,'自然_輔','林㞽鋌',0],
+  ['701',4,1,'藝術','蔡芷儀',0],['701',4,2,'體育','林秋霞',0],['701',4,3,'國文','阮建安',0],['701',4,4,'數學','施銘權',0],
+  ['701',4,5,'家政','陳文鈴',0],['701',4,6,'自然','林㞽鋌',0],['701',4,7,'英語','吳靜瑜',0],['701',4,8,'社會_輔','阮建安',0],
+  ['701',5,1,'數學','施銘權',0],['701',5,2,'國文','阮建安',0],['701',5,3,'自然','林㞽鋌',0],['701',5,4,'閩南語','張碧菁',1],
+  ['701',5,5,'飛中藝人','陳文鈴',0],['701',5,6,'飛中藝人','陳文鈴',0],['701',5,7,'飛中好品','阮建安',0],['701',5,8,'英語_輔','吳靜瑜',0],
 
-  // ── 801 班 (40 節) ──
-  { classId: '801', day: 1, period: 1, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '801', day: 1, period: 2, subject: '體育', teacher: '林秋霞', isOvertime: false },
-  { classId: '801', day: 1, period: 3, subject: '社會', teacher: '蔡明振', isOvertime: true },
-  { classId: '801', day: 1, period: 4, subject: '數學', teacher: '施銘權', isOvertime: false },
-  { classId: '801', day: 1, period: 5, subject: '生活科技', teacher: '吳俊德', isOvertime: false },
-  { classId: '801', day: 1, period: 6, subject: '自然', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '801', day: 1, period: 7, subject: '國文', teacher: '蔡明振', isOvertime: false },
-  { classId: '801', day: 1, period: 8, subject: '國文_輔', teacher: '蔡明振', isOvertime: false },
-  { classId: '801', day: 2, period: 1, subject: '童軍', teacher: '陳文鈴', isOvertime: false },
-  { classId: '801', day: 2, period: 2, subject: '國文', teacher: '蔡明振', isOvertime: false },
-  { classId: '801', day: 2, period: 3, subject: '資訊科技', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '801', day: 2, period: 4, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '801', day: 2, period: 5, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '801', day: 2, period: 6, subject: '社會', teacher: '蔡明振', isOvertime: true },
-  { classId: '801', day: 2, period: 7, subject: '數學', teacher: '施銘權', isOvertime: false },
-  { classId: '801', day: 2, period: 8, subject: '自然_輔', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '801', day: 3, period: 1, subject: '自然', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '801', day: 3, period: 2, subject: '輔導', teacher: '陳文鈴', isOvertime: false },
-  { classId: '801', day: 3, period: 3, subject: '國文', teacher: '蔡明振', isOvertime: false },
-  { classId: '801', day: 3, period: 4, subject: '數學', teacher: '施銘權', isOvertime: false },
-  { classId: '801', day: 3, period: 5, subject: '閩南語', teacher: '張碧菁', isOvertime: false },
-  { classId: '801', day: 3, period: 6, subject: '社會', teacher: '蔡明振', isOvertime: true },
-  { classId: '801', day: 3, period: 7, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '801', day: 3, period: 8, subject: '英語_輔', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '801', day: 4, period: 1, subject: '國文', teacher: '蔡明振', isOvertime: false },
-  { classId: '801', day: 4, period: 2, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '801', day: 4, period: 3, subject: '體育', teacher: '林秋霞', isOvertime: false },
-  { classId: '801', day: 4, period: 4, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '801', day: 4, period: 5, subject: '說古道今', teacher: '林㞽鋌', isOvertime: true },
-  { classId: '801', day: 4, period: 6, subject: '健康', teacher: '施銘權', isOvertime: true },
-  { classId: '801', day: 4, period: 7, subject: '家政', teacher: '陳文鈴', isOvertime: false },
-  { classId: '801', day: 4, period: 8, subject: '數學_輔', teacher: '施銘權', isOvertime: false },
-  { classId: '801', day: 5, period: 1, subject: '自然', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '801', day: 5, period: 2, subject: '大藝術家英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '801', day: 5, period: 3, subject: '數學', teacher: '施銘權', isOvertime: false },
-  { classId: '801', day: 5, period: 4, subject: '國文', teacher: '蔡明振', isOvertime: false },
-  { classId: '801', day: 5, period: 5, subject: '飛中藝人', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '801', day: 5, period: 6, subject: '飛中藝人', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '801', day: 5, period: 7, subject: '飛中好品', teacher: '蔡明振', isOvertime: false },
-  { classId: '801', day: 5, period: 8, subject: '社會_輔', teacher: '蔡明振', isOvertime: false },
+  // 801 (40節)
+  ['801',1,1,'英語','吳靜瑜',0],['801',1,2,'體育','林秋霞',0],['801',1,3,'社會','蔡明振',1],['801',1,4,'數學','施銘權',0],
+  ['801',1,5,'生活科技','吳俊德',0],['801',1,6,'自然','林㞽鋌',0],['801',1,7,'國文','蔡明振',0],['801',1,8,'國文_輔','蔡明振',0],
+  ['801',2,1,'童軍','陳文鈴',0],['801',2,2,'國文','蔡明振',0],['801',2,3,'資訊科技','林㞽鋌',0],['801',2,4,'英語','吳靜瑜',0],
+  ['801',2,5,'藝術','蔡芷儀',0],['801',2,6,'社會','蔡明振',1],['801',2,7,'數學','施銘權',0],['801',2,8,'自然_輔','林㞽鋌',0],
+  ['801',3,1,'自然','林㞽鋌',0],['801',3,2,'輔導','陳文鈴',0],['801',3,3,'國文','蔡明振',0],['801',3,4,'數學','施銘權',0],
+  ['801',3,5,'閩南語','張碧菁',0],['801',3,6,'社會','蔡明振',1],['801',3,7,'藝術','蔡芷儀',0],['801',3,8,'英語_輔','吳靜瑜',0],
+  ['801',4,1,'國文','蔡明振',0],['801',4,2,'藝術','蔡芷儀',0],['801',4,3,'體育','林秋霞',0],['801',4,4,'英語','吳靜瑜',0],
+  ['801',4,5,'說古道今','林㞽鋌',1],['801',4,6,'健康','施銘權',1],['801',4,7,'家政','陳文鈴',0],['801',4,8,'數學_輔','施銘權',0],
+  ['801',5,1,'自然','林㞽鋌',0],['801',5,2,'大藝術家英語','吳靜瑜',0],['801',5,3,'數學','施銘權',0],['801',5,4,'國文','蔡明振',0],
+  ['801',5,5,'飛中藝人','吳靜瑜',0],['801',5,6,'飛中藝人','吳靜瑜',0],['801',5,7,'飛中好品','蔡明振',0],['801',5,8,'社會_輔','蔡明振',0],
 
-  // ── 901 班 (40 節) ──
-  { classId: '901', day: 1, period: 1, subject: '數學', teacher: '張碧菁', isOvertime: false },
-  { classId: '901', day: 1, period: 2, subject: '社會', teacher: '李貞慧', isOvertime: false },
-  { classId: '901', day: 1, period: 3, subject: '體育', teacher: '林秋霞', isOvertime: false },
-  { classId: '901', day: 1, period: 4, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '901', day: 1, period: 5, subject: '家政', teacher: '陳文鈴', isOvertime: false },
-  { classId: '901', day: 1, period: 6, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '901', day: 1, period: 7, subject: '國文', teacher: '阮建安', isOvertime: false },
-  { classId: '901', day: 1, period: 8, subject: '國文_輔', teacher: '阮建安', isOvertime: false },
-  { classId: '901', day: 2, period: 1, subject: '社會', teacher: '李貞慧', isOvertime: true },
-  { classId: '901', day: 2, period: 2, subject: '資訊科技', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '901', day: 2, period: 3, subject: '國文', teacher: '阮建安', isOvertime: false },
-  { classId: '901', day: 2, period: 4, subject: '世界之眼', teacher: '李貞慧', isOvertime: true },
-  { classId: '901', day: 2, period: 5, subject: '輔導', teacher: '陳文鈴', isOvertime: false },
-  { classId: '901', day: 2, period: 6, subject: '數學', teacher: '張碧菁', isOvertime: false },
-  { classId: '901', day: 2, period: 7, subject: '自然', teacher: '蔡麗昭', isOvertime: false },
-  { classId: '901', day: 2, period: 8, subject: '數學_輔', teacher: '張碧菁', isOvertime: false },
-  { classId: '901', day: 3, period: 1, subject: '自然', teacher: '蔡麗昭', isOvertime: false },
-  { classId: '901', day: 3, period: 2, subject: '健康', teacher: '張碧菁', isOvertime: false },
-  { classId: '901', day: 3, period: 3, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '901', day: 3, period: 4, subject: '國文', teacher: '阮建安', isOvertime: false },
-  { classId: '901', day: 3, period: 5, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '901', day: 3, period: 6, subject: '體育', teacher: '林秋霞', isOvertime: false },
-  { classId: '901', day: 3, period: 7, subject: '數學', teacher: '張碧菁', isOvertime: false },
-  { classId: '901', day: 3, period: 8, subject: '社會_輔', teacher: '李貞慧', isOvertime: false },
-  { classId: '901', day: 4, period: 1, subject: '國文', teacher: '阮建安', isOvertime: false },
-  { classId: '901', day: 4, period: 2, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '901', day: 4, period: 3, subject: '自然', teacher: '蔡麗昭', isOvertime: true },
-  { classId: '901', day: 4, period: 4, subject: '社會', teacher: '李貞慧', isOvertime: false },
-  { classId: '901', day: 4, period: 5, subject: '書海飛閱', teacher: '阮建安', isOvertime: false },
-  { classId: '901', day: 4, period: 6, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '901', day: 4, period: 7, subject: '生活科技', teacher: '吳俊德', isOvertime: false },
-  { classId: '901', day: 4, period: 8, subject: '英語_輔', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '901', day: 5, period: 1, subject: '數學', teacher: '張碧菁', isOvertime: false },
-  { classId: '901', day: 5, period: 2, subject: '童軍', teacher: '陳文鈴', isOvertime: false },
-  { classId: '901', day: 5, period: 3, subject: '國文', teacher: '阮建安', isOvertime: false },
-  { classId: '901', day: 5, period: 4, subject: '神遊希臘神話', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '901', day: 5, period: 5, subject: '飛中藝人', teacher: '張碧菁', isOvertime: false },
-  { classId: '901', day: 5, period: 6, subject: '飛中藝人', teacher: '張碧菁', isOvertime: false },
-  { classId: '901', day: 5, period: 7, subject: '飛中好品', teacher: '張碧菁', isOvertime: false },
-  { classId: '901', day: 5, period: 8, subject: '自然_輔', teacher: '蔡麗昭', isOvertime: false },
+  // 901 (40節)
+  ['901',1,1,'數學','張碧菁',0],['901',1,2,'社會','李貞慧',0],['901',1,3,'體育','林秋霞',0],['901',1,4,'藝術','蔡芷儀',0],
+  ['901',1,5,'家政','陳文鈴',0],['901',1,6,'英語','吳靜瑜',0],['901',1,7,'國文','阮建安',0],['901',1,8,'國文_輔','阮建安',0],
+  ['901',2,1,'社會','李貞慧',1],['901',2,2,'資訊科技','林㞽鋌',0],['901',2,3,'國文','阮建安',0],['901',2,4,'世界之眼','李貞慧',1],
+  ['901',2,5,'輔導','陳文鈴',0],['901',2,6,'數學','張碧菁',0],['901',2,7,'自然','蔡麗昭',0],['901',2,8,'數學_輔','張碧菁',0],
+  ['901',3,1,'自然','蔡麗昭',0],['901',3,2,'健康','張碧菁',0],['901',3,3,'英語','吳靜瑜',0],['901',3,4,'國文','阮建安',0],
+  ['901',3,5,'藝術','蔡芷儀',0],['901',3,6,'體育','林秋霞',0],['901',3,7,'數學','張碧菁',0],['901',3,8,'社會_輔','李貞慧',0],
+  ['901',4,1,'國文','阮建安',0],['901',4,2,'英語','吳靜瑜',0],['901',4,3,'自然','蔡麗昭',1],['901',4,4,'社會','李貞慧',0],
+  ['901',4,5,'書海飛閱','阮建安',0],['901',4,6,'藝術','蔡芷儀',0],['901',4,7,'生活科技','吳俊德',0],['901',4,8,'英語_輔','吳靜瑜',0],
+  ['901',5,1,'數學','張碧菁',0],['901',5,2,'童軍','陳文鈴',0],['901',5,3,'國文','阮建安',0],['901',5,4,'神遊希臘神話','吳靜瑜',0],
+  ['901',5,5,'飛中藝人','張碧菁',0],['901',5,6,'飛中藝人','張碧菁',0],['901',5,7,'飛中好品','張碧菁',0],['901',5,8,'自然_輔','蔡麗昭',0],
 
-  // ── 902 班 (40 節) ──
-  { classId: '902', day: 1, period: 1, subject: '國文', teacher: '蔡明振', isOvertime: false },
-  { classId: '902', day: 1, period: 2, subject: '童軍', teacher: '陳文鈴', isOvertime: false },
-  { classId: '902', day: 1, period: 3, subject: '健康', teacher: '張碧菁', isOvertime: false },
-  { classId: '902', day: 1, period: 4, subject: '數學', teacher: '張碧菁', isOvertime: false },
-  { classId: '902', day: 1, period: 5, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '902', day: 1, period: 6, subject: '體育', teacher: '林秋霞', isOvertime: false },
-  { classId: '902', day: 1, period: 7, subject: '世界之眼', teacher: '李貞慧', isOvertime: true },
-  { classId: '902', day: 1, period: 8, subject: '英語_輔', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '902', day: 2, period: 1, subject: '資訊科技', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '902', day: 2, period: 2, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '902', day: 2, period: 3, subject: '輔導', teacher: '陳文鈴', isOvertime: false },
-  { classId: '902', day: 2, period: 4, subject: '國文', teacher: '蔡明振', isOvertime: false },
-  { classId: '902', day: 2, period: 5, subject: '社會', teacher: '李貞慧', isOvertime: false },
-  { classId: '902', day: 2, period: 6, subject: '自然', teacher: '蔡麗昭', isOvertime: false },
-  { classId: '902', day: 2, period: 7, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '902', day: 2, period: 8, subject: '國文_輔', teacher: '蔡明振', isOvertime: false },
-  { classId: '902', day: 3, period: 1, subject: '國文', teacher: '蔡明振', isOvertime: false },
-  { classId: '902', day: 3, period: 2, subject: '體育', teacher: '林秋霞', isOvertime: false },
-  { classId: '902', day: 3, period: 3, subject: '自然', teacher: '蔡麗昭', isOvertime: true },
-  { classId: '902', day: 3, period: 4, subject: '家政', teacher: '陳文鈴', isOvertime: false },
-  { classId: '902', day: 3, period: 5, subject: '神遊希臘神話', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '902', day: 3, period: 6, subject: '數學', teacher: '張碧菁', isOvertime: false },
-  { classId: '902', day: 3, period: 7, subject: '社會', teacher: '李貞慧', isOvertime: false },
-  { classId: '902', day: 3, period: 8, subject: '數學_輔', teacher: '張碧菁', isOvertime: false },
-  { classId: '902', day: 4, period: 1, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '902', day: 4, period: 2, subject: '國文', teacher: '蔡明振', isOvertime: false },
-  { classId: '902', day: 4, period: 3, subject: '社會', teacher: '李貞慧', isOvertime: true },
-  { classId: '902', day: 4, period: 4, subject: '數學', teacher: '張碧菁', isOvertime: false },
-  { classId: '902', day: 4, period: 5, subject: '書海飛閱', teacher: '蔡明振', isOvertime: false },
-  { classId: '902', day: 4, period: 6, subject: '生活科技', teacher: '吳俊德', isOvertime: false },
-  { classId: '902', day: 4, period: 7, subject: '藝術', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '902', day: 4, period: 8, subject: '自然_輔', teacher: '蔡麗昭', isOvertime: false },
-  { classId: '902', day: 5, period: 1, subject: '英語', teacher: '吳靜瑜', isOvertime: false },
-  { classId: '902', day: 5, period: 2, subject: '數學', teacher: '張碧菁', isOvertime: false },
-  { classId: '902', day: 5, period: 3, subject: '國文', teacher: '蔡明振', isOvertime: false },
-  { classId: '902', day: 5, period: 4, subject: '自然', teacher: '蔡麗昭', isOvertime: false },
-  { classId: '902', day: 5, period: 5, subject: '飛中藝人', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '902', day: 5, period: 6, subject: '飛中藝人', teacher: '蔡芷儀', isOvertime: false },
-  { classId: '902', day: 5, period: 7, subject: '飛中好品', teacher: '林㞽鋌', isOvertime: false },
-  { classId: '902', day: 5, period: 8, subject: '社會_輔', teacher: '李貞慧', isOvertime: false },
+  // 902 (40節)
+  ['902',1,1,'國文','蔡明振',0],['902',1,2,'童軍','陳文鈴',0],['902',1,3,'健康','張碧菁',0],['902',1,4,'數學','張碧菁',0],
+  ['902',1,5,'藝術','蔡芷儀',0],['902',1,6,'體育','林秋霞',0],['902',1,7,'世界之眼','李貞慧',1],['902',1,8,'英語_輔','吳靜瑜',0],
+  ['902',2,1,'資訊科技','林㞽鋌',0],['902',2,2,'英語','吳靜瑜',0],['902',2,3,'輔導','陳文鈴',0],['902',2,4,'國文','蔡明振',0],
+  ['902',2,5,'社會','李貞慧',0],['902',2,6,'自然','蔡麗昭',0],['902',2,7,'藝術','蔡芷儀',0],['902',2,8,'國文_輔','蔡明振',0],
+  ['902',3,1,'國文','蔡明振',0],['902',3,2,'體育','林秋霞',0],['902',3,3,'自然','蔡麗昭',1],['902',3,4,'家政','陳文鈴',0],
+  ['902',3,5,'神遊希臘神話','吳靜瑜',0],['902',3,6,'數學','張碧菁',0],['902',3,7,'社會','李貞慧',0],['902',3,8,'數學_輔','張碧菁',0],
+  ['902',4,1,'英語','吳靜瑜',0],['902',4,2,'國文','蔡明振',0],['902',4,3,'社會','李貞慧',1],['902',4,4,'數學','張碧菁',0],
+  ['902',4,5,'書海飛閱','蔡明振',0],['902',4,6,'生活科技','吳俊德',0],['902',4,7,'藝術','蔡芷儀',0],['902',4,8,'自然_輔','蔡麗昭',0],
+  ['902',5,1,'英語','吳靜瑜',0],['902',5,2,'數學','張碧菁',0],['902',5,3,'國文','蔡明振',0],['902',5,4,'自然','蔡麗昭',0],
+  ['902',5,5,'飛中藝人','蔡芷儀',0],['902',5,6,'飛中藝人','蔡芷儀',0],['902',5,7,'飛中好品','林㞽鋌',0],['902',5,8,'社會_輔','李貞慧',0],
 
-  // ── 特教抽離資源班 (學701 11節 ＋ 學801 7節，共 18 節) ──
-  { classId: '學701', day: 1, period: 1, subject: '國文', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學701', day: 2, period: 6, subject: '數學', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學701', day: 2, period: 7, subject: '國文', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學701', day: 3, period: 1, subject: '學習策略', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學701', day: 3, period: 2, subject: '國文', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學701', day: 3, period: 6, subject: '數學', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學701', day: 4, period: 3, subject: '國文', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學701', day: 4, period: 4, subject: '數學', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學701', day: 5, period: 1, subject: '數學', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學701', day: 5, period: 2, subject: '國文', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學701', day: 5, period: 7, subject: '社會技巧', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學801', day: 1, period: 7, subject: '國文', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學801', day: 2, period: 2, subject: '國文', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學801', day: 3, period: 1, subject: '學習策略', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學801', day: 3, period: 3, subject: '國文', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學801', day: 4, period: 1, subject: '國文', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學801', day: 5, period: 4, subject: '國文', teacher: '鄭宇涵', isOvertime: false },
-  { classId: '學801', day: 5, period: 7, subject: '社會技巧', teacher: '鄭宇涵', isOvertime: false }
+  // 特教抽離班 (學701 11節 + 學801 7節，共18節)
+  ['學701',1,1,'國文','鄭宇涵',0],['學701',2,6,'數學','鄭宇涵',0],['學701',2,7,'國文','鄭宇涵',0],
+  ['學701',3,1,'學習策略','鄭宇涵',0],['學701',3,2,'國文','鄭宇涵',0],['學701',3,6,'數學','鄭宇涵',0],
+  ['學701',4,3,'國文','鄭宇涵',0],['學701',4,4,'數學','鄭宇涵',0],['學701',5,1,'數學','鄭宇涵',0],
+  ['學701',5,2,'國文','鄭宇涵',0],['學701',5,7,'社會技巧','鄭宇涵',0],
+  ['學801',1,7,'國文','鄭宇涵',0],['學801',2,2,'國文','鄭宇涵',0],['學801',3,1,'學習策略','鄭宇涵',0],
+  ['學801',3,3,'國文','鄭宇涵',0],['學801',4,1,'國文','鄭宇涵',0],['學801',5,4,'國文','鄭宇涵',0],
+  ['學801',5,7,'社會技巧','鄭宇涵',0]
 ];
+
+// 展開為正式基準課表物件陣列
+window.BASELINE_SCHEDULE_MATRIX = RAW_BASELINE_DATA.map(r => ({
+  classId: r[0],
+  day: r[1],
+  period: r[2],
+  subject: r[3],
+  teacher: r[4],
+  isOvertime: r[5] === 1,
+  isAfterschool: r[2] === 8
+}));
