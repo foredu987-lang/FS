@@ -1,13 +1,17 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
  * 課務排代、調課與月結管理系統 - 動態課表核心引擎 (js/schedule.js)
+ * 權限隔離升級：
+ * 1. 訪客/學生模式：全面隱藏「⚡兼課」標籤、圖例與教師個人排課資訊卡
+ * 2. 課務組長(admin)：完整顯示「⚡兼課」行政排課標記與全校教師兼課總覽卡
+ * 3. 一般教師(teacher)：僅可檢視個人授課與自辦互調課
  */
 
 window.currentWeek = 1;
 window.scheduleViewMode = 'class';
 
 function initAcademicWeek() {
-  const config = window.FEISHA_CONFIG_CONSTANTS || { startDate: '2026-08-31T00:00:00', totalWeeks: 21 };
+  const config = window.FEISHA_SYSTEM_CONFIG || { startDate: '2026-08-31T00:00:00', totalWeeks: 21 };
   const semStart = new Date(config.startDate);
   const today = new Date();
   
@@ -26,7 +30,7 @@ function initAcademicWeek() {
 }
 
 function getWeekDates(weekNum) {
-  const config = window.FEISHA_CONFIG_CONSTANTS || { startDate: '2026-08-31T00:00:00' };
+  const config = window.FEISHA_SYSTEM_CONFIG || { startDate: '2026-08-31T00:00:00' };
   const semStart = new Date(config.startDate);
   const monday = new Date(semStart);
   monday.setDate(monday.getDate() + (weekNum - 1) * 7);
@@ -80,18 +84,24 @@ function goToCurrentWeek() {
 function initScheduleTargetSelect() {
   const sel = document.getElementById('targetSelect');
   if (!sel) return;
-  if (window.scheduleViewMode === 'class') {
+  const role = window.currentUser?.role || 'guest';
+
+  // 訪客或班級模式：僅呈現班級清單 (701 ~ 902)
+  if (window.scheduleViewMode === 'class' || role === 'guest') {
+    const cur = sel.value;
     sel.innerHTML = `
-      <option value="701">701 班課表</option>
-      <option value="801" selected>801 班課表</option>
-      <option value="901">901 班課表</option>
-      <option value="902">902 班課表</option>
+      <option value="701" ${cur === '701' ? 'selected' : ''}>701 班課表</option>
+      <option value="801" ${(!cur || cur === '801') ? 'selected' : ''}>801 班課表</option>
+      <option value="901" ${cur === '901' ? 'selected' : ''}>901 班課表</option>
+      <option value="902" ${cur === '902' ? 'selected' : ''}>902 班課表</option>
     `;
   } else {
+    // 登入教師或組長：呈現教師清單
     const roster = window.TEACHER_ROSTER || {};
     let h = '';
+    const currentTeacher = window.currentUser?.teacherName;
     Object.keys(roster).forEach(name => {
-      const isSel = name === '蔡明振' ? 'selected' : '';
+      const isSel = (name === currentTeacher || (!currentTeacher && name === '蔡明振')) ? 'selected' : '';
       h += `<option value="${name}" ${isSel}>${name} 老師 (${roster[name].title})</option>`;
     });
     sel.innerHTML = h;
@@ -99,11 +109,15 @@ function initScheduleTargetSelect() {
 }
 
 function setViewMode(m) {
+  const role = window.currentUser?.role || 'guest';
+  // 訪客/學生強制鎖定班級課表
+  if (role === 'guest' && m !== 'class') return;
+
   window.scheduleViewMode = m;
   const classBtn = document.getElementById('viewModeClassBtn');
   const teacherBtn = document.getElementById('viewModeTeacherBtn');
-  if (classBtn) classBtn.className = m === 'class' ? "px-3 py-1 rounded-md bg-white shadow-xs text-slate-800 transition font-bold" : "px-3 py-1 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold";
-  if (teacherBtn) teacherBtn.className = m === 'teacher' ? "px-3 py-1 rounded-md bg-white shadow-xs text-slate-800 transition font-bold" : "px-3 py-1 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold";
+  if (classBtn) classBtn.className = m === 'class' ? "px-3 py-1 rounded-md bg-white shadow-xs text-slate-800 transition font-bold cursor-pointer" : "px-3 py-1 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold cursor-pointer";
+  if (teacherBtn) teacherBtn.className = m === 'teacher' ? "px-3 py-1 rounded-md bg-white shadow-xs text-slate-800 transition font-bold cursor-pointer" : "px-3 py-1 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold cursor-pointer";
   initScheduleTargetSelect();
   renderScheduleGrid();
 }
@@ -133,8 +147,11 @@ function renderScheduleGrid() {
   const tbody = document.getElementById('scheduleTbody');
   const overloadCard = document.getElementById('teacherOverloadCard');
   const targetSelect = document.getElementById('targetSelect');
+  const legendOvertime = document.getElementById('legendOvertimeItem');
   if (!thead || !tbody || !targetSelect) return;
 
+  const role = window.currentUser?.role || 'guest';
+  const isAdmin = role === 'admin';
   const target = targetSelect.value || (window.scheduleViewMode === 'class' ? '801' : '蔡明振');
   const weekDates = getWeekDates(window.currentWeek || 1);
   const wNames = ['週一', '週二', '週三', '週四', '週五'];
@@ -146,7 +163,16 @@ function renderScheduleGrid() {
   const allTasks = window.appData?.tasks || [];
   const allSwaps = window.appData?.swaps || [];
 
-  // 表頭渲染
+  // 控制底部圖例：非組長身分一律隱藏「兼課超鐘點」項目
+  if (legendOvertime) {
+    if (isAdmin) {
+      legendOvertime.classList.remove('hidden');
+    } else {
+      legendOvertime.classList.add('hidden');
+    }
+  }
+
+  // 1. 表頭渲染
   let th = `<tr><th class="py-3 px-2 text-xs font-bold text-slate-500 border-r border-slate-200 w-24 bg-slate-50">節次</th>`;
   wNames.forEach((name, idx) => {
     const d = weekDates[idx];
@@ -160,8 +186,9 @@ function renderScheduleGrid() {
   th += `</tr>`;
   thead.innerHTML = th;
 
-  // 教師兼課卡片
-  if (window.scheduleViewMode === 'teacher' && roster[target]) {
+  // 2. 教師兼課總覽卡片 (僅組長或該教師本人登入可見；訪客/學生嚴格隱藏)
+  const canViewOverloadCard = isAdmin || (role === 'teacher' && window.currentUser?.teacherName === target);
+  if (window.scheduleViewMode === 'teacher' && roster[target] && canViewOverloadCard) {
     overloadCard.classList.remove('hidden');
     const t = roster[target];
     document.getElementById('cardTeacherName').textContent = `${target} 老師`;
@@ -177,7 +204,7 @@ function renderScheduleGrid() {
     overloadCard.classList.add('hidden');
   }
 
-  // 課表格網
+  // 3. 課表格網
   let tb = '';
   periodsConfig.forEach(per => {
     const pNum = per.period;
@@ -202,7 +229,7 @@ function renderScheduleGrid() {
 
       tb += `<td class="p-1.5 border-r border-slate-200 h-24 align-middle text-left relative">`;
 
-      // A. 早自習
+      // A. 第 0 節早自習
       if (is0) {
         if (window.scheduleViewMode === 'class') {
           const defaultHomeroom = homeroomMap[target] || '導師';
@@ -213,7 +240,7 @@ function renderScheduleGrid() {
               <div class="h-full w-full p-2 rounded-lg bg-amber-50 border-2 border-amber-400 text-xs flex flex-col justify-between">
                 <div class="flex items-center justify-between"><span class="text-xs font-black text-amber-950">🚩 代理導師晨輔</span><span class="text-[10px] px-1 bg-amber-200 text-amber-900 font-bold rounded">代導</span></div>
                 <div class="text-xs font-bold text-amber-900">代導師：${homeroomTask.subTeacher}</div>
-                <div class="text-[10px] text-amber-700 truncate">原導師：${homeroomTask.origTeacher || defaultHomeroom} (差假)</div>
+                <div class="text-[10px] text-amber-700 truncate">原任導師：${homeroomTask.origTeacher || defaultHomeroom} (差假)</div>
               </div>
             `;
           } else {
@@ -225,6 +252,7 @@ function renderScheduleGrid() {
             `;
           }
         } else {
+          // 教師視角
           const isSubHomeroom = allTasks.find(t => String(t.date).trim() === rocDateStr && t.subTeacher === target && (Number(t.homeroomFee) > 0 || String(t.classPeriod).includes('代導')));
           const isOrigHomeroom = allTasks.find(t => String(t.date).trim() === rocDateStr && t.origTeacher === target && (Number(t.homeroomFee) > 0 || String(t.classPeriod).includes('代導')));
 
@@ -271,11 +299,12 @@ function renderScheduleGrid() {
             </div>
           `;
         } else if (baseClass) {
+          // 關鍵隱私修正：⚡兼課 標籤僅對組長(admin)顯示，學生/訪客絕對不顯示
           tb += `
             <div class="h-full w-full p-2 rounded-lg border border-slate-200/80 bg-white hover:border-indigo-400 hover:shadow-xs transition flex flex-col justify-between">
               <div class="flex items-center justify-between gap-1">
                 <span class="text-base font-black text-slate-800 tracking-wide truncate">${baseClass.subject}</span>
-                ${baseClass.isOvertime ? '<span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">⚡兼課</span>' : ''}
+                ${(isAdmin && baseClass.isOvertime) ? '<span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">⚡兼課</span>' : ''}
               </div>
               <div class="text-sm font-semibold text-slate-600">${baseClass.teacher}</div>
               ${specialClass ? `<div class="mt-1 pt-1 border-t border-purple-100 flex items-center justify-between text-[11px] text-purple-700 font-bold bg-purple-50/70 px-1.5 py-0.5 rounded"><span>♿ 抽離：${specialClass.teacher}</span><span class="font-normal text-[10px]">(${specialClass.subject})</span></div>` : ''}
@@ -328,7 +357,7 @@ function renderScheduleGrid() {
             <div class="h-full w-full p-2.5 rounded-lg border border-slate-200/80 bg-white hover:border-indigo-400 hover:shadow-xs transition flex flex-col justify-between">
               <div class="flex items-center justify-between gap-1">
                 <span class="text-base font-black text-slate-800 tracking-wide truncate">${baseClass.subject}</span>
-                ${isOverload || baseClass.isOvertime ? '<span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">⚡兼課</span>' : ''}
+                ${(isAdmin && (isOverload || baseClass.isOvertime)) ? '<span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">⚡兼課</span>' : ''}
               </div>
               <div class="text-sm font-semibold text-slate-600">${baseClass.classId} 班</div>
             </div>
@@ -354,3 +383,4 @@ window.navigateWeek = navigateWeek;
 window.goToCurrentWeek = goToCurrentWeek;
 window.setViewMode = setViewMode;
 window.renderScheduleGrid = renderScheduleGrid;
+window.initScheduleTargetSelect = initScheduleTargetSelect;

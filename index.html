@@ -85,7 +85,8 @@
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
-          <div class="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs">
+          <!-- 視角切換器外層 (RBAC：訪客/學生強制隱藏) -->
+          <div id="scheduleViewModeWrapper" class="hidden flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs">
             <button id="viewModeClassBtn" onclick="setViewMode('class')" class="px-3 py-1 rounded-md bg-white shadow-xs text-slate-800 transition font-bold cursor-pointer">班級課表</button>
             <button id="viewModeTeacherBtn" onclick="setViewMode('teacher')" class="px-3 py-1 rounded-md text-slate-500 hover:text-slate-800 transition font-semibold cursor-pointer">教師課表</button>
           </div>
@@ -97,7 +98,7 @@
         </div>
       </div>
 
-      <!-- 教師兼課總覽資訊卡 -->
+      <!-- 教師兼課總覽資訊卡 (RBAC：訪客/學生強制隱藏) -->
       <div id="teacherOverloadCard" class="hidden bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 shadow-2xs">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div class="flex items-center gap-2">
@@ -126,7 +127,8 @@
           <span class="w-3.5 h-3.5 rounded-sm border border-slate-300 bg-white"></span>
           <span>常態正規課</span>
         </div>
-        <div class="flex items-center gap-1.5">
+        <!-- 兼課超鐘點圖例 (RBAC：訪客/學生強制隱藏) -->
+        <div id="legendOvertimeItem" class="hidden flex items-center gap-1.5">
           <span class="w-3.5 h-3.5 rounded-sm border border-amber-300 bg-amber-100 text-[10px] text-amber-900 font-black flex items-center justify-center">⚡</span>
           <span class="font-bold text-amber-800">兼課超鐘點</span>
         </div>
@@ -473,7 +475,7 @@
     </div>
   </div>
 
-  <!-- 依序載入核心腳本 (無多餘依賴，按順序執行) -->
+  <!-- 依序載入核心腳本 -->
   <script src="js/data.js"></script>
   <script src="js/schedule.js"></script>
   <script src="js/tasks.js"></script>

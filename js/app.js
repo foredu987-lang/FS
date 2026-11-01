@@ -1,7 +1,7 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
  * 課務排代、調課與月結管理系統 - 主控與 RBAC 門禁模組 (js/app.js)
- * 修正：全面改用 classList 切換 active 樣式，徹底避免覆蓋 hidden 屬性
+ * 核心：三層身分授權 (Guest / Teacher / Admin)、樣式防覆蓋保護、密碼重設與試算表拉取
  */
 
 const STORAGE_KEY_TASKS = 'feisha_tasks_115_1';
@@ -97,32 +97,42 @@ function applyRbacPermissions() {
   const navMod4 = document.getElementById('tab-module4');
   const navMod5 = document.getElementById('tab-module5');
   const navMod6 = document.getElementById('tab-module6');
+  const viewModeWrapper = document.getElementById('scheduleViewModeWrapper');
 
   if (role === 'guest') {
-    // 訪客：只開模組 1，其餘 5 個嚴格隱藏
+    // 訪客 (學生/家長)：嚴格隱藏模組 2~6
     if (navMod2) navMod2.classList.add('hidden');
     if (navMod3) navMod3.classList.add('hidden');
     if (navMod4) navMod4.classList.add('hidden');
     if (navMod5) navMod5.classList.add('hidden');
     if (navMod6) navMod6.classList.add('hidden');
+
+    // 關鍵個資防護：訪客模式下強制鎖定為班級課表，並隱藏教師課表切換開關
+    if (viewModeWrapper) viewModeWrapper.classList.add('hidden');
+    window.scheduleViewMode = 'class';
+    if (typeof initScheduleTargetSelect === 'function') initScheduleTargetSelect();
+
     switchTab('module1');
   } else if (role === 'teacher') {
-    // 一般教師：開放模組 1 與 模組 3
+    // 一般教師：開放模組 1 與 模組 3，開放視角切換
     if (navMod2) navMod2.classList.add('hidden');
     if (navMod3) navMod3.classList.remove('hidden');
     if (navMod4) navMod4.classList.add('hidden');
     if (navMod5) navMod5.classList.add('hidden');
     if (navMod6) navMod6.classList.add('hidden');
+    if (viewModeWrapper) viewModeWrapper.classList.remove('hidden');
   } else if (role === 'admin') {
-    // 課務組長：全開
+    // 課務組長：全模組解鎖，開放視角切換
     if (navMod2) navMod2.classList.remove('hidden');
     if (navMod3) navMod3.classList.remove('hidden');
     if (navMod4) navMod4.classList.remove('hidden');
     if (navMod5) navMod5.classList.remove('hidden');
     if (navMod6) navMod6.classList.remove('hidden');
+    if (viewModeWrapper) viewModeWrapper.classList.remove('hidden');
   }
 
   renderAuthHeaderUi();
+  if (typeof renderScheduleGrid === 'function') renderScheduleGrid();
 }
 
 function renderAuthHeaderUi() {
@@ -180,7 +190,7 @@ function switchTab(tabId) {
   const activePane = document.getElementById(tabId);
   if (activePane) activePane.classList.remove('hidden');
 
-  // 2. 切換頁籤按鈕樣式 (只修改顏色與文字粗細，絕對不碰 hidden)
+  // 2. 切換頁籤按鈕樣式 (只修改顏色與粗細，絕不觸碰 hidden)
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.remove('bg-indigo-600', 'text-white', 'font-bold');
     btn.classList.add('text-slate-300', 'font-semibold');
@@ -456,6 +466,62 @@ function adminResetTeacherPassword(teacherName) {
   }
 }
 
+// 雲端拉取 (組長專屬)
+async function pullFromCloud() {
+  const url = window.FEISHA_SYSTEM_CONFIG?.apiUrl;
+  if (!url || !url.startsWith('http') || !url.includes('/exec')) {
+    alert('⚠️ 系統底層常數未正確設定 Google Apps Script Web App 網址！');
+    return;
+  }
+
+  const pullBtn = document.querySelector("button[onclick='pullFromCloud()']");
+  let origText = '';
+  if (pullBtn) {
+    origText = pullBtn.innerHTML;
+    pullBtn.innerHTML = '<span>⏳ 正在從試算表拉取資料...</span>';
+    pullBtn.disabled = true;
+  }
+
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    const data = await res.json();
+
+    if (data.status !== 'success') {
+      throw new Error(data.message || '後端試算表回傳錯誤狀態');
+    }
+
+    if (Array.isArray(data.tasks)) {
+      window.appData.tasks = data.tasks;
+      localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(data.tasks));
+    }
+    if (Array.isArray(data.swaps)) {
+      window.appData.swaps = data.swaps;
+      localStorage.setItem(STORAGE_KEY_SWAPS, JSON.stringify(data.swaps));
+    }
+    if (data.roster && typeof data.roster === 'object' && Object.keys(data.roster).length > 0) {
+      window.TEACHER_ROSTER = data.roster;
+      localStorage.setItem(STORAGE_KEY_CUSTOM_ROSTER, JSON.stringify(data.roster));
+    }
+
+    if (typeof initTeacherSelects === 'function') initTeacherSelects();
+    if (typeof renderRosterTable === 'function') renderRosterTable();
+    if (typeof renderScheduleGrid === 'function') renderScheduleGrid();
+    if (typeof renderTasksTable === 'function') renderTasksTable();
+    if (typeof renderSwapsTable === 'function') renderSwapsTable();
+    if (typeof renderReportTable === 'function') renderReportTable();
+
+    alert(`✅ 雲端資料同步成功！\n\n• 排代課堂：${data.tasks ? data.tasks.length : 0} 筆\n• 互調課紀錄：${data.swaps ? data.swaps.length : 0} 筆\n全校課表與教師編制已對齊！`);
+  } catch (err) {
+    console.error('拉取資料失敗：', err);
+    alert('❌ 從 Google 試算表拉取資料失敗：\n' + err.message + '\n\n排查提示：請確認 Apps Script 部署作業存取權限已設為「任何人 (Anyone)」。');
+  } finally {
+    if (pullBtn) {
+      pullBtn.innerHTML = origText;
+      pullBtn.disabled = false;
+    }
+  }
+}
+
 // 註冊至全域 window
 window.switchTab = switchTab;
 window.openLoginModal = openLoginModal;
@@ -469,3 +535,4 @@ window.closeChangePasswordModal = closeChangePasswordModal;
 window.handleChangePasswordSubmit = handleChangePasswordSubmit;
 window.adminResetTeacherPassword = adminResetTeacherPassword;
 window.renderRosterTable = renderRosterTable;
+window.pullFromCloud = pullFromCloud;
