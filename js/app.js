@@ -1,36 +1,38 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
- * 課務排代、調課與月結管理系統 - 主控模組 (js/app.js)
- * 整合：組長權限管理、教師名冊維護、Google Apps Script 雲端同步 (Save/Pull/Push)
+ * 課務排代、調課與月結管理系統 - 主控與 RBAC 門禁模組 (js/app.js)
+ * 階段二：三層身分授權 (Guest / Teacher / Admin) 與導航釋出
  */
 
 const STORAGE_KEY_TASKS = 'feisha_tasks_115_1';
 const STORAGE_KEY_SWAPS = 'feisha_swaps_115_1';
 const STORAGE_KEY_CONFIG = 'feisha_config_115_1';
-const STORAGE_KEY_CUSTOM_SCHEDULE = 'feisha_schedule_matrix_115_1';
 const STORAGE_KEY_CUSTOM_ROSTER = 'feisha_teacher_roster_115_1';
+const SESSION_KEY_AUTH = 'feisha_current_session_115_1';
 
-window.isAdminUnlocked = false;
+// 全域身分狀態 (預設 guest)
+window.currentUser = {
+  role: 'guest',
+  teacherName: null
+};
 
 window.appData = {
   tasks: [],
   swaps: [],
   config: {
-    apiUrl: '',
-    calendarId: 'c_9f7d9e917c79ee2de6f54ed275f97d9bfdb493ba457a0135b69438213e217ba6@group.calendar.google.com',
+    apiUrl: window.FEISHA_SYSTEM_CONFIG ? window.FEISHA_SYSTEM_CONFIG.apiUrl : '',
+    calendarId: window.FEISHA_SYSTEM_CONFIG ? window.FEISHA_SYSTEM_CONFIG.calendarId : '',
     reminderMinutes: 15,
     adminPassword: 'fatman'
   }
 };
 
-// ==========================================
-// 1. 生命週期啟動程序
-// ==========================================
 window.addEventListener('DOMContentLoaded', () => {
-  try { loadFromLocalStorage(); } catch (e) { console.warn(e); }
+  try { loadLocalData(); } catch (e) { console.warn('本地快取讀取異常：', e); }
+  try { initAuthSession(); } catch (e) { console.error('身分狀態初始化異常：', e); }
+  try { populateLoginTeacherSelect(); } catch (e) { console.warn(e); }
   try { initTeacherSelects(); } catch (e) { console.warn(e); }
   try { renderRosterTable(); } catch (e) { console.warn(e); }
-  try { updateCloudStatus(); } catch (e) { console.warn(e); }
 
   try {
     if (typeof initAcademicWeek === 'function') {
@@ -39,7 +41,7 @@ window.addEventListener('DOMContentLoaded', () => {
       renderScheduleGrid();
     }
   } catch (e) {
-    console.error('課表啟動異常：', e);
+    console.error('課表初始化異常：', e);
   }
 
   try { if (typeof renderTasksTable === 'function') renderTasksTable(); } catch (e) {}
@@ -47,18 +49,10 @@ window.addEventListener('DOMContentLoaded', () => {
   try { if (typeof renderReportTable === 'function') renderReportTable(); } catch (e) {}
 });
 
-function loadFromLocalStorage() {
+function loadLocalData() {
   const savedTasks = localStorage.getItem(STORAGE_KEY_TASKS);
   const savedSwaps = localStorage.getItem(STORAGE_KEY_SWAPS);
-  const savedConfig = localStorage.getItem(STORAGE_KEY_CONFIG);
-
-  if (savedConfig) {
-    try {
-      const cfg = JSON.parse(savedConfig);
-      window.appData.config = Object.assign(window.appData.config, cfg);
-    } catch (e) {}
-  }
-  window.appData.config.adminPassword = 'fatman';
+  const savedRoster = localStorage.getItem(STORAGE_KEY_CUSTOM_ROSTER);
 
   if (savedTasks) {
     try { window.appData.tasks = JSON.parse(savedTasks); } catch (e) {}
@@ -66,58 +60,292 @@ function loadFromLocalStorage() {
   if (savedSwaps) {
     try { window.appData.swaps = JSON.parse(savedSwaps); } catch (e) {}
   }
-
-  const apiInput = document.getElementById('settingApiUrl');
-  if (apiInput && window.appData.config.apiUrl) {
-    apiInput.value = window.appData.config.apiUrl;
+  if (savedRoster) {
+    try {
+      const roster = JSON.parse(savedRoster);
+      if (roster && typeof roster === 'object') {
+        window.TEACHER_ROSTER = Object.assign(window.TEACHER_ROSTER || {}, roster);
+      }
+    } catch (e) {}
   }
 }
 
-function saveToLocalStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(window.appData.config));
-    localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(window.appData.tasks));
-    localStorage.setItem(STORAGE_KEY_SWAPS, JSON.stringify(window.appData.swaps));
-  } catch (e) {}
+// ==========================================
+// RBAC 三層身分控制 (Session-based)
+// ==========================================
+function initAuthSession() {
+  const sessionStr = sessionStorage.getItem(SESSION_KEY_AUTH);
+  if (sessionStr) {
+    try {
+      const parsed = JSON.parse(sessionStr);
+      if (parsed && (parsed.role === 'teacher' || parsed.role === 'admin')) {
+        window.currentUser = parsed;
+      }
+    } catch (e) {
+      window.currentUser = { role: 'guest', teacherName: null };
+    }
+  } else {
+    window.currentUser = { role: 'guest', teacherName: null };
+  }
+  applyRbacPermissions();
+}
+
+function applyRbacPermissions() {
+  const role = window.currentUser.role;
+  const navMod2 = document.getElementById('tab-module2');
+  const navMod3 = document.getElementById('tab-module3');
+  const navMod4 = document.getElementById('tab-module4');
+  const navMod5 = document.getElementById('tab-module5');
+  const navMod6 = document.getElementById('tab-module6');
+
+  if (role === 'guest') {
+    // 訪客：僅保留模組 1
+    if (navMod2) navMod2.classList.add('hidden');
+    if (navMod3) navMod3.classList.add('hidden');
+    if (navMod4) navMod4.classList.add('hidden');
+    if (navMod5) navMod5.classList.add('hidden');
+    if (navMod6) navMod6.classList.add('hidden');
+    switchTab('module1');
+  } else if (role === 'teacher') {
+    // 一般教師：開放模組 1 與 模組 3
+    if (navMod2) navMod2.classList.add('hidden');
+    if (navMod3) navMod3.classList.remove('hidden');
+    if (navMod4) navMod4.classList.add('hidden');
+    if (navMod5) navMod5.classList.add('hidden');
+    if (navMod6) navMod6.classList.add('hidden');
+  } else if (role === 'admin') {
+    // 課務組長：全模組解鎖
+    if (navMod2) navMod2.classList.remove('hidden');
+    if (navMod3) navMod3.classList.remove('hidden');
+    if (navMod4) navMod4.classList.remove('hidden');
+    if (navMod5) navMod5.classList.remove('hidden');
+    if (navMod6) navMod6.classList.remove('hidden');
+  }
+
+  renderAuthHeaderUi();
+}
+
+function renderAuthHeaderUi() {
+  const container = document.getElementById('authStatusContainer');
+  if (!container) return;
+  const role = window.currentUser.role;
+
+  if (role === 'guest') {
+    container.innerHTML = `
+      <button onclick="openLoginModal()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+        <span>🔑 身分登入</span>
+      </button>
+    `;
+  } else if (role === 'teacher') {
+    const name = window.currentUser.teacherName || '教師';
+    container.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-bold text-indigo-300 bg-indigo-950/80 px-2.5 py-1 rounded-md border border-indigo-700/60 flex items-center gap-1">
+          👤 ${name} 老師
+        </span>
+        <button onclick="openChangePasswordModal()" class="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition cursor-pointer">
+          🔑 改密碼
+        </button>
+        <button onclick="logout()" class="px-2.5 py-1 rounded-md bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-xs font-bold border border-rose-700/50 transition cursor-pointer">
+          🚪 登出
+        </button>
+      </div>
+    `;
+  } else if (role === 'admin') {
+    container.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-bold text-emerald-300 bg-emerald-950/80 px-2.5 py-1 rounded-md border border-emerald-700/60 flex items-center gap-1">
+          👑 課務組長 (最高權限)
+        </span>
+        <button onclick="logout()" class="px-2.5 py-1 rounded-md bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-xs font-bold border border-rose-700/50 transition cursor-pointer">
+          🚪 登出
+        </button>
+      </div>
+    `;
+  }
 }
 
 // ==========================================
-// 2. 組長管理權限 (fatman 通行)
+// 登入彈窗邏輯
 // ==========================================
-function toggleAdminLock() {
-  if (window.isAdminUnlocked) {
-    window.isAdminUnlocked = false;
-    updateAdminUi();
+function openLoginModal() {
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.classList.remove('hidden');
+  switchLoginRoleTab('teacher');
+}
+
+function closeLoginModal() {
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function switchLoginRoleTab(role) {
+  const teacherBtn = document.getElementById('loginTabTeacherBtn');
+  const adminBtn = document.getElementById('loginTabAdminBtn');
+  const teacherForm = document.getElementById('teacherLoginForm');
+  const adminForm = document.getElementById('adminLoginForm');
+
+  if (role === 'teacher') {
+    if (teacherBtn) teacherBtn.className = "flex-1 py-1.5 rounded-md font-bold transition bg-white shadow-xs text-indigo-700 cursor-pointer";
+    if (adminBtn) adminBtn.className = "flex-1 py-1.5 rounded-md font-semibold transition text-slate-500 hover:text-slate-800 cursor-pointer";
+    if (teacherForm) teacherForm.classList.remove('hidden');
+    if (adminForm) adminForm.classList.add('hidden');
+  } else {
+    if (adminBtn) adminBtn.className = "flex-1 py-1.5 rounded-md font-bold transition bg-white shadow-xs text-slate-900 cursor-pointer";
+    if (teacherBtn) teacherBtn.className = "flex-1 py-1.5 rounded-md font-semibold transition text-slate-500 hover:text-slate-800 cursor-pointer";
+    if (adminForm) adminForm.classList.remove('hidden');
+    if (teacherForm) teacherForm.classList.add('hidden');
+  }
+}
+
+function populateLoginTeacherSelect() {
+  const sel = document.getElementById('loginTeacherSelect');
+  if (!sel) return;
+  const roster = window.TEACHER_ROSTER || {};
+  sel.innerHTML = '';
+  Object.keys(roster).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = `${name} 老師 (${roster[name]?.title || '教師'})`;
+    sel.appendChild(opt);
+  });
+}
+
+function handleTeacherLogin(e) {
+  e.preventDefault();
+  const sel = document.getElementById('loginTeacherSelect');
+  const pinInput = document.getElementById('loginTeacherPin');
+  if (!sel || !pinInput) return;
+
+  const tName = sel.value;
+  const enteredPin = pinInput.value.trim();
+  const roster = window.TEACHER_ROSTER || {};
+  const correctPin = String(roster[tName]?.password || '1234').trim();
+
+  if (enteredPin === correctPin) {
+    window.currentUser = { role: 'teacher', teacherName: tName };
+    sessionStorage.setItem(SESSION_KEY_AUTH, JSON.stringify(window.currentUser));
+    pinInput.value = '';
+    closeLoginModal();
+    applyRbacPermissions();
+
+    // 登入後自動切換至個人課表
+    if (typeof setViewMode === 'function') setViewMode('teacher');
+    const targetSel = document.getElementById('targetSelect');
+    if (targetSel) {
+      targetSel.value = tName;
+      if (typeof renderScheduleGrid === 'function') renderScheduleGrid();
+    }
+
+    alert(`👋 歡迎 ${tName} 老師登入！\n已自動為您切換至個人課表，並解鎖「模組 3：同仁自辦互調課」。`);
+  } else {
+    alert('❌ 調課密碼不正確！\n預設密碼為 1234，若忘記密碼請洽課務組長重置。');
+  }
+}
+
+function handleAdminLogin(e) {
+  e.preventDefault();
+  const pwdInput = document.getElementById('loginAdminPassword');
+  if (!pwdInput) return;
+
+  const enteredPwd = pwdInput.value.trim();
+  const correctPwd = String(window.FEISHA_SYSTEM_CONFIG?.adminPassword || 'fatman').trim();
+
+  if (enteredPwd === correctPwd) {
+    window.currentUser = { role: 'admin', teacherName: '課務組長' };
+    sessionStorage.setItem(SESSION_KEY_AUTH, JSON.stringify(window.currentUser));
+    pwdInput.value = '';
+    closeLoginModal();
+    applyRbacPermissions();
     renderRosterTable();
-    alert('🔒 已鎖定，切換為一般教師模式。');
+
+    alert('🔓 課務組長身分驗證成功！\n已為您解鎖系統 6 大模組之完整最高管理權限。');
+  } else {
+    alert('❌ 組長管理密碼不正確！');
+  }
+}
+
+function logout() {
+  if (window.confirm('確定要登出目前身分嗎？')) {
+    sessionStorage.removeItem(SESSION_KEY_AUTH);
+    window.currentUser = { role: 'guest', teacherName: null };
+    applyRbacPermissions();
+    if (typeof setViewMode === 'function') setViewMode('class');
+    renderRosterTable();
+    alert('🔒 已安全登出，回到一般訪客課表檢視模式。');
+  }
+}
+
+// ==========================================
+// 教師自主修改密碼彈窗
+// ==========================================
+function openChangePasswordModal() {
+  const modal = document.getElementById('changePasswordModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeChangePasswordModal() {
+  const modal = document.getElementById('changePasswordModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function handleChangePasswordSubmit(e) {
+  e.preventDefault();
+  if (window.currentUser.role !== 'teacher' || !window.currentUser.teacherName) {
+    alert('非教師身分無法修改密碼！');
     return;
   }
 
-  const inputPwd = window.prompt('🔑 請輸入課務組長管理密碼：');
-  if (inputPwd === null) return;
+  const oldPin = document.getElementById('changeOldPin').value.trim();
+  const newPin = document.getElementById('changeNewPin').value.trim();
+  const confirmPin = document.getElementById('changeConfirmPin').value.trim();
+  const tName = window.currentUser.teacherName;
+  const roster = window.TEACHER_ROSTER || {};
+  const currentPin = String(roster[tName]?.password || '1234').trim();
 
-  if (String(inputPwd).trim() === 'fatman') {
-    window.isAdminUnlocked = true;
-    updateAdminUi();
-    renderRosterTable();
-    alert('🔓 課務組長身分驗證成功！最高權限已解鎖。');
-  } else {
-    alert('❌ 密碼不正確！');
+  if (oldPin !== currentPin) {
+    alert('❌ 目前密碼輸入錯誤！');
+    return;
   }
+  if (!newPin || newPin.length < 4) {
+    alert('⚠️ 新密碼至少需為 4 碼！');
+    return;
+  }
+  if (newPin !== confirmPin) {
+    alert('❌ 兩次新密碼輸入不一致！');
+    return;
+  }
+
+  if (roster[tName]) {
+    roster[tName].password = newPin;
+    localStorage.setItem(STORAGE_KEY_CUSTOM_ROSTER, JSON.stringify(roster));
+  }
+
+  // 同步通知後端試算表更新
+  const apiUrl = window.FEISHA_SYSTEM_CONFIG?.apiUrl;
+  if (apiUrl && apiUrl.startsWith('http')) {
+    fetch(apiUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'updateTeacherPassword',
+        teacherName: tName,
+        newPassword: newPin
+      })
+    });
+  }
+
+  document.getElementById('changeOldPin').value = '';
+  document.getElementById('changeNewPin').value = '';
+  document.getElementById('changeConfirmPin').value = '';
+  closeChangePasswordModal();
+  alert(`✅ 【${tName} 老師】您的調課密碼已成功更新！請妥善保存。`);
 }
 
-function updateAdminUi() {
-  const btn = document.getElementById('adminLockBtn');
-  if (!btn) return;
-  if (window.isAdminUnlocked) {
-    btn.className = "px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer";
-    btn.innerHTML = "<span>👤 課務組長 (已解鎖)</span> <span class='text-[10px] bg-emerald-800/60 px-1.5 py-0.5 rounded ml-1'>登出</span>";
-  } else {
-    btn.className = "px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition border border-slate-700 hover:border-slate-600 shadow-xs cursor-pointer";
-    btn.innerHTML = "<span>🔒 一般教師 (點擊解鎖)</span>";
-  }
-}
-
+// ==========================================
+// 介面導航切換
+// ==========================================
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(p => p.classList.add('hidden'));
   document.querySelectorAll('.tab-btn').forEach(b => {
@@ -136,9 +364,6 @@ function switchTab(tabId) {
   if (tabId === 'module5' && typeof renderReportTable === 'function') renderReportTable();
 }
 
-// ==========================================
-// 3. 教師名冊與密碼管理
-// ==========================================
 function initTeacherSelects() {
   const roster = window.TEACHER_ROSTER || {};
   const names = Object.keys(roster);
@@ -161,6 +386,7 @@ function renderRosterTable() {
   const roster = window.TEACHER_ROSTER || {};
   let html = '';
   const dayNameMap = { '1': '一', '2': '二', '3': '三', '4': '四', '5': '五' };
+  const isAdmin = window.currentUser?.role === 'admin';
 
   Object.keys(roster).forEach(name => {
     const teacher = roster[name] || {};
@@ -177,8 +403,8 @@ function renderRosterTable() {
         <td class="py-2.5 px-3 text-center font-mono font-bold text-amber-700">+${teacher.overloadHours || 0}</td>
         <td class="py-2.5 px-3 text-[11px] text-indigo-700 font-semibold">${periodsFormatted || '無固定兼課'}</td>
         <td class="py-2.5 px-3 text-center">
-          ${window.isAdminUnlocked ? `
-            <button onclick="adminResetTeacherPassword('${name}')" class="px-2 py-1 text-[11px] font-bold rounded bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition shadow-2xs">
+          ${isAdmin ? `
+            <button onclick="adminResetTeacherPassword('${name}')" class="px-2 py-1 text-[11px] font-bold rounded bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition shadow-2xs cursor-pointer">
               🔄 復原為 1234
             </button>
           ` : `<span class="text-slate-400 font-mono">••••</span>`}
@@ -190,17 +416,17 @@ function renderRosterTable() {
 }
 
 function adminResetTeacherPassword(teacherName) {
-  if (!window.isAdminUnlocked) {
-    alert('請先解鎖課務組長權限！');
+  if (window.currentUser?.role !== 'admin') {
+    alert('請先以課務組長身分登入！');
     return;
   }
   if (window.confirm(`確定要將【${teacherName} 老師】的調課密碼復原為預設「1234」嗎？`)) {
     const roster = window.TEACHER_ROSTER || {};
     if (roster[teacherName]) {
       roster[teacherName].password = '1234';
-      localStorage.setItem('feisha_teacher_roster_115_1', JSON.stringify(roster));
+      localStorage.setItem(STORAGE_KEY_CUSTOM_ROSTER, JSON.stringify(roster));
     }
-    const apiUrl = window.appData?.config?.apiUrl;
+    const apiUrl = window.FEISHA_SYSTEM_CONFIG?.apiUrl;
     if (apiUrl && apiUrl.startsWith('http')) {
       fetch(apiUrl, {
         method: 'POST',
@@ -214,176 +440,16 @@ function adminResetTeacherPassword(teacherName) {
   }
 }
 
-function confirmResetLocalStorage() {
-  if (window.confirm('確定要清空本機暫存並重新載入底冊嗎？')) {
-    localStorage.clear();
-    location.reload();
-  }
-}
-
-function updateCloudStatus() {
-  const dot = document.getElementById('cloudStatusDot');
-  const text = document.getElementById('cloudStatusText');
-  if (!dot || !text) return;
-  if (window.appData.config.apiUrl?.startsWith('http')) {
-    dot.className = "w-2 h-2 rounded-full bg-emerald-400";
-    text.textContent = "雲端同步已連線";
-  } else {
-    dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
-    text.textContent = "本機離線模式";
-  }
-}
-
-// ==========================================
-// 4. Google 試算表與日曆同步核心
-// ==========================================
-function saveCloudSettings() {
-  const apiInput = document.getElementById('settingApiUrl');
-  const reminderSelect = document.getElementById('reminderMinutesSelect');
-  if (!apiInput) return;
-
-  const url = apiInput.value.trim();
-
-  if (!url || !url.startsWith('https://script.google.com/macros/s/') || !url.includes('/exec')) {
-    alert('⚠️ 網址格式不正確！\n請填入以 https://script.google.com/macros/s/ 開頭，且以 /exec 結尾的完整 Web App 網址。');
-    return;
-  }
-
-  if (!window.appData) window.appData = { config: {} };
-  if (!window.appData.config) window.appData.config = {};
-  window.appData.config.apiUrl = url;
-
-  if (reminderSelect) {
-    window.appData.config.reminderMinutes = parseInt(reminderSelect.value, 10) || 15;
-  }
-
-  saveToLocalStorage();
-  updateCloudStatus();
-
-  alert('✅ Google Apps Script 雲端 API 網址儲存成功！\n系統已連線至您的 Google 試算表。');
-}
-
-async function pullFromCloud() {
-  const apiInput = document.getElementById('settingApiUrl');
-  let url = (apiInput ? apiInput.value.trim() : '') || window.appData?.config?.apiUrl;
-
-  if (!url || !url.startsWith('http') || !url.includes('/exec')) {
-    alert('⚠️ 尚未設定 Google Apps Script Web App 網址，或網址格式不正確。\n請至「模組 6：名冊與系統設定」填入以 /exec 結尾的 API 網址。');
-    return;
-  }
-
-  if (!window.appData) window.appData = { config: {} };
-  if (!window.appData.config) window.appData.config = {};
-  window.appData.config.apiUrl = url;
-  saveToLocalStorage();
-  updateCloudStatus();
-
-  const pullBtn = document.querySelector("button[onclick='pullFromCloud()']");
-  let origText = '';
-  if (pullBtn) {
-    origText = pullBtn.innerHTML;
-    pullBtn.innerHTML = '<span>⏳ 正在從試算表拉取資料...</span>';
-    pullBtn.disabled = true;
-  }
-
-  try {
-    const res = await fetch(url, { method: 'GET' });
-    const data = await res.json();
-
-    if (data.status !== 'success') {
-      throw new Error(data.message || '後端試算表回傳錯誤狀態');
-    }
-
-    if (Array.isArray(data.tasks)) {
-      window.appData.tasks = data.tasks;
-      localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(data.tasks));
-    }
-
-    if (Array.isArray(data.swaps)) {
-      window.appData.swaps = data.swaps;
-      localStorage.setItem(STORAGE_KEY_SWAPS, JSON.stringify(data.swaps));
-    }
-
-    if (Array.isArray(data.schedule) && data.schedule.length > 0) {
-      window.BASELINE_SCHEDULE_MATRIX = data.schedule;
-      localStorage.setItem(STORAGE_KEY_CUSTOM_SCHEDULE, JSON.stringify(data.schedule));
-    }
-
-    if (data.roster && typeof data.roster === 'object' && Object.keys(data.roster).length > 0) {
-      window.TEACHER_ROSTER = data.roster;
-      localStorage.setItem(STORAGE_KEY_CUSTOM_ROSTER, JSON.stringify(data.roster));
-    }
-
-    if (data.settings && data.settings.adminPassword) {
-      window.appData.config.adminPassword = data.settings.adminPassword;
-      localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(window.appData.config));
-    }
-
-    if (typeof initTeacherSelects === 'function') initTeacherSelects();
-    if (typeof renderRosterTable === 'function') renderRosterTable();
-    if (typeof renderScheduleGrid === 'function') renderScheduleGrid();
-    if (typeof renderTasksTable === 'function') renderTasksTable();
-    if (typeof renderSwapsTable === 'function') renderSwapsTable();
-    if (typeof renderReportTable === 'function') renderReportTable();
-
-    alert(`✅ 雲端資料同步成功！\n\n` +
-          `• 排代課堂：${data.tasks ? data.tasks.length : 0} 筆\n` +
-          `• 互調課紀錄：${data.swaps ? data.swaps.length : 0} 筆\n` +
-          `• 全校課表：${data.schedule ? data.schedule.length : 0} 堂課已更新\n` +
-          `教師編制、姓名（林㞽鋌）與調課密碼已全數校正對齊！`);
-
-  } catch (err) {
-    console.error('拉取資料失敗：', err);
-    alert('❌ 從 Google 試算表拉取資料失敗：\n' + err.message + '\n\n排查提示：\n1. 請確認 Apps Script 部署作業的存取權限已設為「任何人 (Anyone)」\n2. 請確認網路連線正常。');
-  } finally {
-    if (pullBtn) {
-      pullBtn.innerHTML = origText;
-      pullBtn.disabled = false;
-    }
-  }
-}
-
-async function pushToCloud() {
-  const apiInput = document.getElementById('settingApiUrl');
-  let url = (apiInput ? apiInput.value.trim() : '') || window.appData?.config?.apiUrl;
-
-  if (!url || !url.startsWith('http') || !url.includes('/exec')) {
-    alert('⚠️ 尚未設定 Google Apps Script Web App 網址！請先填入網址。');
-    return;
-  }
-
-  const payload = {
-    tasks: window.appData?.tasks || [],
-    swaps: window.appData?.swaps || [],
-    calendarId: window.appData?.config?.calendarId || 'c_9f7d9e917c79ee2de6f54ed275f97d9bfdb493ba457a0135b69438213e217ba6@group.calendar.google.com',
-    reminderMinutes: window.appData?.config?.reminderMinutes || 15
-  };
-
-  try {
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-
-    alert('✅ 本機排代與調課資料已成功推送到 Google 試算表！\nGoogle 日曆已同步接收排代更新。');
-  } catch (err) {
-    console.error('推送資料失敗：', err);
-    alert('❌ 推送至雲端失敗：' + err.message);
-  }
-}
-
 // 註冊至全域 window 物件
-window.loadFromLocalStorage = loadFromLocalStorage;
-window.saveToLocalStorage = saveToLocalStorage;
-window.toggleAdminLock = toggleAdminLock;
 window.switchTab = switchTab;
-window.initTeacherSelects = initTeacherSelects;
-window.renderRosterTable = renderRosterTable;
+window.openLoginModal = openLoginModal;
+window.closeLoginModal = closeLoginModal;
+window.switchLoginRoleTab = switchLoginRoleTab;
+window.handleTeacherLogin = handleTeacherLogin;
+window.handleAdminLogin = handleAdminLogin;
+window.logout = logout;
+window.openChangePasswordModal = openChangePasswordModal;
+window.closeChangePasswordModal = closeChangePasswordModal;
+window.handleChangePasswordSubmit = handleChangePasswordSubmit;
 window.adminResetTeacherPassword = adminResetTeacherPassword;
-window.confirmResetLocalStorage = confirmResetLocalStorage;
-window.updateCloudStatus = updateCloudStatus;
-window.saveCloudSettings = saveCloudSettings;
-window.pullFromCloud = pullFromCloud;
-window.pushToCloud = pushToCloud;
+window.renderRosterTable = renderRosterTable;
