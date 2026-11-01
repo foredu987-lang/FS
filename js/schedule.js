@@ -1,22 +1,12 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
  * 課務排代、調課與月結管理系統 - 動態課表與週次導航模組 (js/schedule.js)
- * 修正：將 currentWeek 與 scheduleViewMode 正式綁定於 window，並在初始化時立即繪製課表
+ * 修正：移除所有教室顯示標籤，維持課表格子乾淨簡潔
  */
 
-// ==========================================
-// 1. 全域狀態變數 (掛載於 window 確保跨檔案相容)
-// ==========================================
 window.currentWeek = 1;
-window.scheduleViewMode = 'class'; // 'class' 或 'teacher'
+window.scheduleViewMode = 'class';
 
-// ==========================================
-// 2. 學期週次與日期對齊核心演算法
-// ==========================================
-
-/**
- * 依據今日實際日期推算當前學期週次 (以 2026-08-31 115-1開學週為基準)
- */
 function initAcademicWeek() {
   const config = window.FEISHA_CONFIG_CONSTANTS || {
     startDate: '2026-08-31T00:00:00',
@@ -35,19 +25,11 @@ function initAcademicWeek() {
   
   window.currentWeek = calculatedWeek;
 
-  // 1. 產生 1~21 週下拉選單
   populateWeekSelect();
-
-  // 2. 初始化檢視目標選單 (班級或教師)
   initScheduleTargetSelect();
-
-  // 3. 關鍵修復：初始化完成立即繪製當週課表網格！
   renderScheduleGrid();
 }
 
-/**
- * 取得指定學期週次之週一至週五的精確日期物件與民國年7碼字串
- */
 function getWeekDates(weekNum) {
   const config = window.FEISHA_CONFIG_CONSTANTS || { startDate: '2026-08-31T00:00:00' };
   const semStart = new Date(config.startDate);
@@ -77,9 +59,6 @@ function getWeekDates(weekNum) {
   return weekDates;
 }
 
-/**
- * 渲染週次下拉選單項目
- */
 function populateWeekSelect() {
   const select = document.getElementById('weekSelect');
   if (!select) return;
@@ -124,9 +103,6 @@ function goToCurrentWeek() {
   initAcademicWeek();
 }
 
-// ==========================================
-// 3. 檢視模式切換器 (依班級 / 依教師)
-// ==========================================
 function initScheduleTargetSelect() {
   const targetSelect = document.getElementById('targetSelect');
   if (!targetSelect) return;
@@ -166,9 +142,6 @@ function setViewMode(mode) {
   renderScheduleGrid();
 }
 
-// ==========================================
-// 4. 動態課表網格渲染引擎
-// ==========================================
 function renderScheduleGrid() {
   const thead = document.getElementById('scheduleThead');
   const tbody = document.getElementById('scheduleTbody');
@@ -186,7 +159,6 @@ function renderScheduleGrid() {
   const baselineMatrix = window.BASELINE_SCHEDULE_MATRIX || [];
   const periodsConfig = window.FEISHA_PERIODS || [];
 
-  // A. 表頭渲染
   const today = new Date();
   const currentRocToday = `${today.getFullYear() - 1911}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
 
@@ -213,7 +185,6 @@ function renderScheduleGrid() {
   theadHtml += `</tr>`;
   thead.innerHTML = theadHtml;
 
-  // B. 教師兼課明細卡片控制
   if (scheduleViewMode === 'teacher' && roster[currentTarget]) {
     const tConfig = roster[currentTarget];
     overloadCard.classList.remove('hidden');
@@ -240,7 +211,6 @@ function renderScheduleGrid() {
     overloadCard.classList.add('hidden');
   }
 
-  // C. 節次課堂渲染 (第 1 節 ~ 第 8 節)
   let tbodyHtml = '';
 
   periodsConfig.forEach(periodItem => {
@@ -262,7 +232,6 @@ function renderScheduleGrid() {
       const rocDateStr = dateInfo.fullRoc;
       const periodKey = `${dayIdx}-${pNum}`;
 
-      // 檢索官方真實課表底冊
       let baseClass = null;
       if (scheduleViewMode === 'class') {
         baseClass = baselineMatrix.find(b => b.classId === currentTarget && b.day === dayIdx && b.period === pNum);
@@ -270,7 +239,6 @@ function renderScheduleGrid() {
         baseClass = baselineMatrix.find(b => b.teacher === currentTarget && b.day === dayIdx && b.period === pNum);
       }
 
-      // 檢索排代
       const activeTask = (window.appData?.tasks || []).find(t => {
         const isDateMatch = String(t.date).trim() === rocDateStr;
         if (!isDateMatch) return false;
@@ -283,7 +251,6 @@ function renderScheduleGrid() {
         return scheduleViewMode === 'class' ? String(t.classPeriod).includes(currentTarget) : (t.subTeacher === currentTarget || t.origTeacher === currentTarget);
       });
 
-      // 檢索調課
       const activeSwap = (window.appData?.swaps || []).find(s => {
         const isOrigMatch = String(s.origDate).trim() === rocDateStr && Number(s.origPeriod) === pNum;
         const isTargetMatch = String(s.targetDate).trim() === rocDateStr && Number(s.targetPeriod) === pNum;
@@ -323,6 +290,7 @@ function renderScheduleGrid() {
           </div>
         `;
       } else if (baseClass) {
+        // 常態課堂卡片：完全移除教室 span，版面俐落
         tbodyHtml += `
           <div class="p-1.5 rounded-lg border border-transparent hover:border-slate-300 transition text-xs">
             <div class="flex items-center justify-between gap-1">
@@ -333,9 +301,8 @@ function renderScheduleGrid() {
                 </span>
               ` : ''}
             </div>
-            <div class="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+            <div class="text-[11px] text-slate-500 mt-1">
               <span>${scheduleViewMode === 'class' ? baseClass.teacher : baseClass.classId + '班'}</span>
-              <span class="text-[10px] text-slate-400 font-mono">${baseClass.room || ''}</span>
             </div>
           </div>
         `;
@@ -352,7 +319,6 @@ function renderScheduleGrid() {
   tbody.innerHTML = tbodyHtml;
 }
 
-// 匯出至全域
 window.initAcademicWeek = initAcademicWeek;
 window.getWeekDates = getWeekDates;
 window.populateWeekSelect = populateWeekSelect;
