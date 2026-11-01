@@ -1,7 +1,7 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
  * 課務排代、調課與月結管理系統 - 主控與 RBAC 門禁模組 (js/app.js)
- * 階段二：三層身分授權 (Guest / Teacher / Admin) 與導航釋出
+ * 修正：全面改用 classList 切換 active 樣式，徹底避免覆蓋 hidden 屬性
  */
 
 const STORAGE_KEY_TASKS = 'feisha_tasks_115_1';
@@ -10,7 +10,7 @@ const STORAGE_KEY_CONFIG = 'feisha_config_115_1';
 const STORAGE_KEY_CUSTOM_ROSTER = 'feisha_teacher_roster_115_1';
 const SESSION_KEY_AUTH = 'feisha_current_session_115_1';
 
-// 全域身分狀態 (預設 guest)
+// 全域身分狀態 (guest | teacher | admin)
 window.currentUser = {
   role: 'guest',
   teacherName: null
@@ -99,7 +99,7 @@ function applyRbacPermissions() {
   const navMod6 = document.getElementById('tab-module6');
 
   if (role === 'guest') {
-    // 訪客：僅保留模組 1
+    // 訪客：只開模組 1，其餘 5 個嚴格隱藏
     if (navMod2) navMod2.classList.add('hidden');
     if (navMod3) navMod3.classList.add('hidden');
     if (navMod4) navMod4.classList.add('hidden');
@@ -114,7 +114,7 @@ function applyRbacPermissions() {
     if (navMod5) navMod5.classList.add('hidden');
     if (navMod6) navMod6.classList.add('hidden');
   } else if (role === 'admin') {
-    // 課務組長：全模組解鎖
+    // 課務組長：全開
     if (navMod2) navMod2.classList.remove('hidden');
     if (navMod3) navMod3.classList.remove('hidden');
     if (navMod4) navMod4.classList.remove('hidden');
@@ -163,6 +163,40 @@ function renderAuthHeaderUi() {
       </div>
     `;
   }
+}
+
+// ==========================================
+// 導航切換核心 (使用 classList 杜絕覆蓋 hidden)
+// ==========================================
+function switchTab(tabId) {
+  const role = window.currentUser?.role || 'guest';
+
+  // 門禁防禦：禁止越權進入未開放分頁
+  if (role === 'guest' && tabId !== 'module1') return;
+  if (role === 'teacher' && tabId !== 'module1' && tabId !== 'module3') return;
+
+  // 1. 切換各區塊面板的顯隱
+  document.querySelectorAll('.tab-content').forEach(p => p.classList.add('hidden'));
+  const activePane = document.getElementById(tabId);
+  if (activePane) activePane.classList.remove('hidden');
+
+  // 2. 切換頁籤按鈕樣式 (只修改顏色與文字粗細，絕對不碰 hidden)
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('bg-indigo-600', 'text-white', 'font-bold');
+    btn.classList.add('text-slate-300', 'font-semibold');
+  });
+
+  const activeBtn = document.getElementById(`tab-${tabId}`);
+  if (activeBtn) {
+    activeBtn.classList.remove('text-slate-300', 'font-semibold');
+    activeBtn.classList.add('bg-indigo-600', 'text-white', 'font-bold');
+  }
+
+  // 3. 模組重新繪製回呼
+  if (tabId === 'module1' && typeof renderScheduleGrid === 'function') renderScheduleGrid();
+  if (tabId === 'module2' && typeof renderTasksTable === 'function') renderTasksTable();
+  if (tabId === 'module3' && typeof renderSwapsTable === 'function') renderSwapsTable();
+  if (tabId === 'module5' && typeof renderReportTable === 'function') renderReportTable();
 }
 
 // ==========================================
@@ -229,13 +263,17 @@ function handleTeacherLogin(e) {
     closeLoginModal();
     applyRbacPermissions();
 
-    // 登入後自動切換至個人課表
+    // 登入後聚焦個人課表
     if (typeof setViewMode === 'function') setViewMode('teacher');
     const targetSel = document.getElementById('targetSelect');
     if (targetSel) {
       targetSel.value = tName;
       if (typeof renderScheduleGrid === 'function') renderScheduleGrid();
     }
+
+    // 自動為調課表單帶入申請人
+    const origTeacherSelect = document.getElementById('swapOrigTeacher');
+    if (origTeacherSelect) origTeacherSelect.value = tName;
 
     alert(`👋 歡迎 ${tName} 老師登入！\n已自動為您切換至個人課表，並解鎖「模組 3：同仁自辦互調課」。`);
   } else {
@@ -321,7 +359,6 @@ function handleChangePasswordSubmit(e) {
     localStorage.setItem(STORAGE_KEY_CUSTOM_ROSTER, JSON.stringify(roster));
   }
 
-  // 同步通知後端試算表更新
   const apiUrl = window.FEISHA_SYSTEM_CONFIG?.apiUrl;
   if (apiUrl && apiUrl.startsWith('http')) {
     fetch(apiUrl, {
@@ -341,27 +378,6 @@ function handleChangePasswordSubmit(e) {
   document.getElementById('changeConfirmPin').value = '';
   closeChangePasswordModal();
   alert(`✅ 【${tName} 老師】您的調課密碼已成功更新！請妥善保存。`);
-}
-
-// ==========================================
-// 介面導航切換
-// ==========================================
-function switchTab(tabId) {
-  document.querySelectorAll('.tab-content').forEach(p => p.classList.add('hidden'));
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    b.className = "tab-btn px-3.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition text-xs sm:text-sm font-semibold whitespace-nowrap";
-  });
-
-  const p = document.getElementById(tabId);
-  if (p) p.classList.remove('hidden');
-
-  const b = document.getElementById(`tab-${tabId}`);
-  if (b) b.className = "tab-btn px-3.5 py-2 rounded-lg text-white bg-indigo-600 transition text-xs sm:text-sm font-bold whitespace-nowrap";
-
-  if (tabId === 'module1' && typeof renderScheduleGrid === 'function') renderScheduleGrid();
-  if (tabId === 'module2' && typeof renderTasksTable === 'function') renderTasksTable();
-  if (tabId === 'module3' && typeof renderSwapsTable === 'function') renderSwapsTable();
-  if (tabId === 'module5' && typeof renderReportTable === 'function') renderReportTable();
 }
 
 function initTeacherSelects() {
@@ -440,7 +456,7 @@ function adminResetTeacherPassword(teacherName) {
   }
 }
 
-// 註冊至全域 window 物件
+// 註冊至全域 window
 window.switchTab = switchTab;
 window.openLoginModal = openLoginModal;
 window.closeLoginModal = closeLoginModal;
