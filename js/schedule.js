@@ -1,10 +1,10 @@
 /**
  * 雲林縣立飛沙國民中學 115學年度第1學期
  * 課務排代、調課與月結管理系統 - 動態課表核心引擎 (js/schedule.js)
- * 權限隔離升級：
- * 1. 訪客/學生模式：全面隱藏「⚡兼課」標籤、圖例與教師個人排課資訊卡
- * 2. 課務組長(admin)：完整顯示「⚡兼課」行政排課標記與全校教師兼課總覽卡
- * 3. 一般教師(teacher)：僅可檢視個人授課與自辦互調課
+ * 修正重點：
+ * 1. 班級課表全面拔除「⚡兼課」標籤，學生與訪客視角乾淨純粹
+ * 2. 訪客/學生模式鎖定班級課表，隱藏圖例兼課項目與教師個人排課資訊卡
+ * 3. 課務組長(admin)僅在「教師課表」視角才顯示兼課標記與排課時數卡
  */
 
 window.currentWeek = 1;
@@ -163,7 +163,7 @@ function renderScheduleGrid() {
   const allTasks = window.appData?.tasks || [];
   const allSwaps = window.appData?.swaps || [];
 
-  // 控制底部圖例：非組長身分一律隱藏「兼課超鐘點」項目
+  // 控制底部圖例：僅組長(admin)可見「兼課超鐘點」圖例，其餘身分一律隱藏
   if (legendOvertime) {
     if (isAdmin) {
       legendOvertime.classList.remove('hidden');
@@ -186,7 +186,7 @@ function renderScheduleGrid() {
   th += `</tr>`;
   thead.innerHTML = th;
 
-  // 2. 教師兼課總覽卡片 (僅組長或該教師本人登入可見；訪客/學生嚴格隱藏)
+  // 2. 教師兼課總覽資訊卡 (僅組長或該教師本人在教師課表視角可見；訪客/學生絕對隱藏)
   const canViewOverloadCard = isAdmin || (role === 'teacher' && window.currentUser?.teacherName === target);
   if (window.scheduleViewMode === 'teacher' && roster[target] && canViewOverloadCard) {
     overloadCard.classList.remove('hidden');
@@ -285,6 +285,7 @@ function renderScheduleGrid() {
 
       // B. 第 1 ~ 8 節
       if (window.scheduleViewMode === 'class') {
+        // === 班級課表模式：徹底移除任何 ⚡兼課 標籤，保護教學隱私 ===
         const specialEdId = target === '701' ? '學701' : (target === '801' ? '學801' : null);
         const baseClass = baselineMatrix.find(b => b.classId === target && b.day === dayIdx && b.period === pNum);
         const specialClass = specialEdId ? baselineMatrix.find(b => b.classId === specialEdId && b.day === dayIdx && b.period === pNum) : null;
@@ -299,12 +300,11 @@ function renderScheduleGrid() {
             </div>
           `;
         } else if (baseClass) {
-          // 關鍵隱私修正：⚡兼課 標籤僅對組長(admin)顯示，學生/訪客絕對不顯示
+          // 班級課表：純粹顯示科目與授課教師，絕不出現 ⚡兼課 標籤
           tb += `
             <div class="h-full w-full p-2 rounded-lg border border-slate-200/80 bg-white hover:border-indigo-400 hover:shadow-xs transition flex flex-col justify-between">
               <div class="flex items-center justify-between gap-1">
                 <span class="text-base font-black text-slate-800 tracking-wide truncate">${baseClass.subject}</span>
-                ${(isAdmin && baseClass.isOvertime) ? '<span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">⚡兼課</span>' : ''}
               </div>
               <div class="text-sm font-semibold text-slate-600">${baseClass.teacher}</div>
               ${specialClass ? `<div class="mt-1 pt-1 border-t border-purple-100 flex items-center justify-between text-[11px] text-purple-700 font-bold bg-purple-50/70 px-1.5 py-0.5 rounded"><span>♿ 抽離：${specialClass.teacher}</span><span class="font-normal text-[10px]">(${specialClass.subject})</span></div>` : ''}
@@ -314,7 +314,7 @@ function renderScheduleGrid() {
           tb += `<div class="h-full w-full flex items-center justify-center text-slate-300 text-sm">—</div>`;
         }
       } else {
-        // 教師個人視角
+        // === 教師個人課表模式 (僅登入教師與組長可見) ===
         const baseClass = baselineMatrix.find(b => b.teacher === target && b.day === dayIdx && b.period === pNum);
         const subbingTask = allTasks.find(t => String(t.date).trim() === rocDateStr && extractPeriodNum(t.period, t.classPeriod) === pNum && t.subTeacher === target);
         const absentTask = allTasks.find(t => String(t.date).trim() === rocDateStr && extractPeriodNum(t.period, t.classPeriod) === pNum && t.origTeacher === target);
@@ -352,6 +352,7 @@ function renderScheduleGrid() {
             </div>
           `;
         } else if (baseClass) {
+          // 僅課務組長(admin)在檢視教師課表時，才會看到 ⚡兼課 標記
           const isOverload = (roster[target]?.overloadPeriods || []).includes(periodKey);
           tb += `
             <div class="h-full w-full p-2.5 rounded-lg border border-slate-200/80 bg-white hover:border-indigo-400 hover:shadow-xs transition flex flex-col justify-between">
